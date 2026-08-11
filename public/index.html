@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScanDash — Network Discovery & Web Service Dashboard</title>
+  <meta name="description" content="High-speed 65,535 port scanner and automated web service dashboard with instant live thumbnails and custom card management.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Favicon (SVG) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300f2fe' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z'/></svg>">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-logo">
+          <div class="radar-icon">
+            <div class="radar-sweep"></div>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a10 10 0 0 1 10 10"/>
+              <path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1 class="brand-title">Scan<span>Dash</span></h1>
+            <span class="brand-tagline">Network Web Service Hub</span>
+          </div>
+        </div>
+
+        <div class="server-badge" id="serverInfoBadge" title="Server Port from .env">
+          <span class="pulse-dot"></span>
+          <span class="server-port-text" id="envPortLabel">PORT :3000</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="search-bar">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search services by name, IP, port, or tag..." autocomplete="off">
+          <button class="clear-search-btn" id="clearSearchBtn" aria-label="Clear search" style="display: none;">&times;</button>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button class="btn btn-secondary" id="refreshAllBtn" title="Refresh all services status">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          <span>Refresh</span>
+        </button>
+
+        <button class="btn btn-primary" id="openScanModalBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          <span>New Scan</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Scan Progress HUD Banner (Active when scan is running) -->
+    <section class="scan-progress-panel" id="scanProgressPanel" style="display: none;">
+      <div class="progress-inner">
+        <div class="progress-info-block">
+          <div class="progress-spinner"></div>
+          <div>
+            <div class="progress-title" id="scanTargetLabel">Scanning 127.0.0.1 across 65,535 ports...</div>
+            <div class="progress-meta" id="scanMetaLabel">0 / 65,535 ports • 0 ports/sec • 0 open found</div>
+          </div>
+        </div>
+
+        <div class="progress-bar-wrapper">
+          <div class="progress-track">
+            <div class="progress-fill" id="scanProgressFill" style="width: 0%;"></div>
+          </div>
+          <span class="progress-percent" id="scanPercentText">0%</span>
+        </div>
+
+        <div class="progress-actions">
+          <button class="btn btn-danger btn-sm" id="stopScanBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="2"/>
+            </svg>
+            <span>Stop Scan</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Subheader Filter & Stats Bar -->
+    <div class="stats-filter-bar">
+      <div class="filter-chips" id="filterTagsContainer">
+        <button class="chip active" data-tag="all">All Services (<span id="totalCount">0</span>)</button>
+        <button class="chip" data-tag="web">Web (<span id="webCount">0</span>)</button>
+        <button class="chip" data-tag="ssl">HTTPS (<span id="sslCount">0</span>)</button>
+        <button class="chip" data-tag="ssh">SSH / Remote</button>
+        <button class="chip" data-tag="database">Databases</button>
+      </div>
+
+      <div class="view-controls">
+        <div class="sort-dropdown">
+          <label for="sortSelect">Sort by:</label>
+          <select id="sortSelect">
+            <option value="recent">Recently Discovered</option>
+            <option value="port">Port Number</option>
+            <option value="ip">IP Address</option>
+            <option value="name">Service Name</option>
+          </select>
+        </div>
+
+        <button class="btn btn-icon btn-ghost" id="clearAllServicesBtn" title="Clear all dashboard cards">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-main">
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon-wrap">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m4.93 4.93 14.14 14.14"/>
+            <path d="M12 2a10 10 0 0 1 10 10"/>
+          </svg>
+        </div>
+        <h2 class="empty-title">No Services Discovered Yet</h2>
+        <p class="empty-desc">Scan your local machine, homelab, or network subnet to automatically discover open web services and generate live preview thumbnails.</p>
+        <div class="empty-actions">
+          <button class="btn btn-primary btn-lg" id="emptyScanBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            <span>Start a Port Scan</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Services Grid -->
+      <div class="services-grid" id="servicesGrid">
+        <!-- Service Cards populated dynamically by app.js -->
+      </div>
+    </main>
+
+    <!-- Scan Modal -->
+    <div class="modal-backdrop" id="scanModal" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Launch Network Port Scan</h3>
+              <p class="modal-subtitle">Scan target IP addresses to auto-discover web applications & generate thumbnails</p>
+            </div>
+          </div>
+          <button class="modal-close-btn" id="closeScanModalBtn">&times;</button>
+        </div>
+
+        <form id="scanForm" class="modal-body">
+          <div class="form-group">
+            <label for="targetIpsInput">
+              Target IP Address(es) or Subnet
+              <span class="label-hint">Single IP, comma list, range (192.168.1.1-50), or CIDR (/24)</span>
+            </label>
+            <div class="input-with-pills">
+              <input type="text" id="targetIpsInput" placeholder="e.g. 127.0.0.1, 192.168.1.10" required>
+            </div>
+            <div class="quick-ip-pills" id="quickIpPills">
+              <span class="pill-label">Quick select:</span>
+              <button type="button" class="ip-pill" data-ip="127.0.0.1">127.0.0.1 (Localhost)</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Port Scan Range</label>
+            <div class="port-radio-grid">
+              <label class="radio-card active">
+                <input type="radio" name="portOption" value="all" checked>
+                <div class="radio-card-content">
+                  <div class="radio-card-title">Full 65,535 Ports</div>
+                  <div class="radio-card-desc">Comprehensive ultra-fast scan (1 – 65535)</div>
+                </div>
+              </label>
+
+              <label class="radio-card">
+                <input type="radio" name="portOption" value="common">
+                <div class="radio-card-content">
+                  <div class="radio-card-title">Top Common Ports</div>
+                  <div class="radio-card-desc">Top 50 web, db & server ports (Fastest)</div>
+                </div>
+              </label>
+
+              <label class="radio-card">
+                <input type="radio" name="portOption" value="custom">
+                <div class="radio-card-content">
+                  <div class="radio-card-title">Custom Range</div>
+                  <div class="radio-card-desc">Define specific ports or ranges</div>
+                </div>
+              </label>
+            </div>
+
+            <div class="custom-ports-input-wrap" id="customPortsInputWrap" style="display: none;">
+              <input type="text" id="customPortsInput" placeholder="e.g. 80, 443, 3000-3050, 8080, 8443, 9000">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label for="concurrencyInput">
+                Scan Concurrency
+                <span class="label-hint">Simultaneous sockets</span>
+              </label>
+              <input type="number" id="concurrencyInput" value="750" min="50" max="2000" step="50">
+            </div>
+
+            <div class="form-group col-half">
+              <label for="timeoutInput">
+                Socket Timeout
+                <span class="label-hint">Milliseconds per probe</span>
+              </label>
+              <input type="number" id="timeoutInput" value="350" min="100" max="3000" step="50">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelScanModalBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="startScanSubmitBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              <span>Start Scanning</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Service Modal -->
+    <div class="modal-backdrop" id="editModal" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Edit Service Details</h3>
+              <p class="modal-subtitle" id="editModalSub">Customize title, tags, and link URL</p>
+            </div>
+          </div>
+          <button class="modal-close-btn" id="closeEditModalBtn">&times;</button>
+        </div>
+
+        <form id="editForm" class="modal-body">
+          <input type="hidden" id="editServiceId">
+
+          <div class="form-group">
+            <label for="editTitleInput">Service Name / Title</label>
+            <input type="text" id="editTitleInput" required placeholder="e.g. Grafana Dashboard, Plex Media Server">
+          </div>
+
+          <div class="form-group">
+            <label for="editUrlInput">Direct Target URL</label>
+            <input type="url" id="editUrlInput" placeholder="http://192.168.1.50:8080">
+          </div>
+
+          <div class="form-group">
+            <label for="editTagsInput">
+              Tags
+              <span class="label-hint">Comma separated (e.g. Web, Production, Dev, Camera)</span>
+            </label>
+            <input type="text" id="editTagsInput" placeholder="web, homelab, production">
+          </div>
+
+          <div class="form-group">
+            <label for="editNotesInput">Notes / Description</label>
+            <textarea id="editNotesInput" rows="3" placeholder="Optional notes about this application..."></textarea>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger btn-sm" id="deleteFromEditModalBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              <span>Delete Card</span>
+            </button>
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary" id="cancelEditModalBtn">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

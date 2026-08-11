@@ -1,0 +1,27 @@
+{
+  "name": "scandash",
+  "version": "1.0.0",
+  "description": "Intelligent high-speed network discovery & port dashboard with automated webpage thumbnails",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "network-scanner",
+    "port-scanner",
+    "dashboard",
+    "web-thumbnails",
+    "puppeteer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ipaddr.js": "^2.2.0",
+    "puppeteer": "^24.4.0"
+  }
+}

@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+!.env.example
+
+# Runtime and persistent database/thumbnails
+data/*.json
+!data/.gitkeep
+data/thumbnails/*
+!data/thumbnails/.gitkeep
+
+# System & logs
+.system_generated/
+*.log
+.DS_Store
+.vscode/
+.idea/
