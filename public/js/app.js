@@ -10,7 +10,9 @@ const state = {
   sortBy: 'recent',
   isScanning: false,
   networkInfo: null,
-  config: null
+  config: null,
+  lastScanResult: null,
+  scanHistory: []
 };
 
 // DOM Elements
@@ -26,6 +28,10 @@ const elements = {
   sortSelect: document.getElementById('sortSelect'),
   filterChips: document.querySelectorAll('.filter-chips .chip'),
   
+  // Header Scan Status
+  headerScanStatusBadge: document.getElementById('headerScanStatusBadge'),
+  headerScanStatusText: document.getElementById('headerScanStatusText'),
+
   // Modals & Panels
   scanModal: document.getElementById('scanModal'),
   openScanModalBtn: document.getElementById('openScanModalBtn'),
@@ -46,6 +52,16 @@ const elements = {
   scanProgressFill: document.getElementById('scanProgressFill'),
   scanPercentText: document.getElementById('scanPercentText'),
   stopScanBtn: document.getElementById('stopScanBtn'),
+
+  // History Modal
+  openHistoryModalBtn: document.getElementById('openHistoryModalBtn'),
+  historyModal: document.getElementById('historyModal'),
+  closeHistoryModalBtn: document.getElementById('closeHistoryModalBtn'),
+  closeHistoryModalBtn2: document.getElementById('closeHistoryModalBtn2'),
+  historyListContainer: document.getElementById('historyListContainer'),
+  historyEmpty: document.getElementById('historyEmpty'),
+  historyActiveScanCard: document.getElementById('historyActiveScanCard'),
+  historyActiveScanDetails: document.getElementById('historyActiveScanDetails'),
 
   refreshAllBtn: document.getElementById('refreshAllBtn'),
   clearAllServicesBtn: document.getElementById('clearAllServicesBtn'),
@@ -70,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   loadConfigAndNetwork();
   loadServices();
+  loadInitialScanStatus();
   initSSE();
 });
 
@@ -96,6 +113,19 @@ function showToast(message, type = 'info') {
     toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
   }, 4000);
+}
+
+// Update Header Scan Status Indicator
+function updateScanStatusBadge(type, text) {
+  elements.headerScanStatusBadge.classList.remove('scanning', 'complete', 'stopped');
+  if (type === 'scanning') {
+    elements.headerScanStatusBadge.classList.add('scanning');
+  } else if (type === 'complete') {
+    elements.headerScanStatusBadge.classList.add('complete');
+  } else if (type === 'stopped') {
+    elements.headerScanStatusBadge.classList.add('stopped');
+  }
+  elements.headerScanStatusText.textContent = text;
 }
 
 // Fetch Server Config and Network Details
@@ -152,6 +182,36 @@ async function loadConfigAndNetwork() {
   }
 }
 
+// Load Initial Scan Status & Recent History on Page Load
+async function loadInitialScanStatus() {
+  try {
+    const [statusRes, historyRes] = await Promise.all([
+      fetch('/api/scan/status').then(r => r.json()),
+      fetch('/api/history').then(r => r.json())
+    ]);
+
+    state.scanHistory = historyRes || [];
+
+    if (statusRes && statusRes.active) {
+      state.isScanning = true;
+      const pct = Math.round((statusRes.completedPorts / (statusRes.totalPorts || 1)) * 100);
+      updateScanStatusBadge('scanning', `Scanning (${pct}%)`);
+      elements.scanProgressPanel.style.display = 'block';
+      elements.scanTargetLabel.textContent = `Scanning ${statusRes.totalHosts} host(s) across ${statusRes.totalPorts?.toLocaleString()} ports...`;
+      elements.scanProgressFill.style.width = `${pct}%`;
+      elements.scanPercentText.textContent = `${pct}%`;
+    } else if (state.scanHistory.length > 0) {
+      const last = state.scanHistory[0];
+      const timeStr = formatRelativeTime(new Date(last.timestamp));
+      updateScanStatusBadge('complete', `Last Scan: ${last.openCount} found (${timeStr})`);
+    } else {
+      updateScanStatusBadge('idle', 'Ready to Scan');
+    }
+  } catch (err) {
+    console.warn('Could not fetch initial scan status:', err);
+  }
+}
+
 // Load Services from API
 async function loadServices() {
   try {
@@ -171,6 +231,7 @@ function initSSE() {
   evtSource.addEventListener('scan_started', e => {
     state.isScanning = true;
     const data = JSON.parse(e.data);
+    updateScanStatusBadge('scanning', `Scanning (${data.hosts.join(', ')})...`);
     elements.scanProgressPanel.style.display = 'block';
     elements.scanTargetLabel.textContent = `Scanning ${data.hosts.join(', ')} across ${data.portsCount.toLocaleString()} ports...`;
     elements.scanMetaLabel.textContent = `0 / ${data.totalProbes.toLocaleString()} ports • 0 ports/sec`;
@@ -180,6 +241,8 @@ function initSSE() {
 
   evtSource.addEventListener('scan_progress', e => {
     const p = JSON.parse(e.data);
+    state.isScanning = true;
+    updateScanStatusBadge('scanning', `Scanning ${p.percent}% • ${p.portsPerSec.toLocaleString()}/s`);
     elements.scanProgressPanel.style.display = 'block';
     elements.scanProgressFill.style.width = `${p.percent}%`;
     elements.scanPercentText.textContent = `${p.percent}%`;
@@ -225,29 +288,95 @@ function initSSE() {
   evtSource.addEventListener('scan_completed', e => {
     state.isScanning = false;
     const data = JSON.parse(e.data);
+    state.lastScanResult = data;
+    updateScanStatusBadge('complete', `Scan Complete • ${data.openDiscovered || 0} found in ${data.durationSec}s`);
     showToast(`Scan complete: ${data.openDiscovered || 0} open services discovered in ${data.durationSec}s`, 'success');
+    
+    // Update progress HUD to completed view
+    elements.scanTargetLabel.textContent = `✅ Scan Completed across ${data.totalScanned?.toLocaleString()} ports in ${data.durationSec}s`;
+    elements.scanMetaLabel.textContent = `Found ${data.openDiscovered || 0} open services • 100% complete`;
+    elements.scanProgressFill.style.width = '100%';
+    elements.scanPercentText.textContent = '100%';
+
+    // Refresh history
+    fetch('/api/history').then(r => r.json()).then(h => { state.scanHistory = h; });
+
     setTimeout(() => {
       if (!state.isScanning) {
         elements.scanProgressPanel.style.display = 'none';
       }
-    }, 4000);
+    }, 6000);
   });
 
   evtSource.addEventListener('scan_stopped', () => {
     state.isScanning = false;
+    updateScanStatusBadge('stopped', 'Scan Stopped');
     showToast('Scan stopped by user', 'warning');
-    elements.scanProgressPanel.style.display = 'none';
+    setTimeout(() => {
+      elements.scanProgressPanel.style.display = 'none';
+    }, 3000);
   });
 
   evtSource.addEventListener('scan_error', e => {
     state.isScanning = false;
     const { error } = JSON.parse(e.data);
+    updateScanStatusBadge('stopped', 'Scan Error');
     showToast(`Scan error: ${error}`, 'danger');
   });
 
   evtSource.onerror = () => {
     console.warn('SSE connection interrupted, will automatically reconnect...');
   };
+}
+
+// Format Relative Time (e.g. "2m ago", "Just now")
+function formatRelativeTime(date) {
+  const diffSec = Math.round((Date.now() - date.getTime()) / 1000);
+  if (diffSec < 45) return 'Just now';
+  if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.round(diffSec / 3600)}h ago`;
+  return date.toLocaleDateString();
+}
+
+// Render History Modal
+async function openHistoryModal() {
+  try {
+    const history = await fetch('/api/history').then(r => r.json());
+    state.scanHistory = history || [];
+
+    // Check active scan
+    if (state.isScanning) {
+      elements.historyActiveScanCard.style.display = 'block';
+      elements.historyActiveScanDetails.textContent = elements.scanMetaLabel.textContent || 'Scan in progress...';
+    } else {
+      elements.historyActiveScanCard.style.display = 'none';
+    }
+
+    if (!history || history.length === 0) {
+      elements.historyListContainer.innerHTML = '<div class="history-empty">No previous scans recorded.</div>';
+    } else {
+      elements.historyListContainer.innerHTML = history.map(item => `
+        <div class="history-item">
+          <div>
+            <div class="history-target">${escapeHtml(item.targets || 'Target')}</div>
+            <div class="history-time">${new Date(item.timestamp).toLocaleString()} • Range: ${escapeHtml(item.portRange || 'Full')}</div>
+          </div>
+          <div class="history-meta">
+            <span class="history-badge success">${item.openCount || 0} Open</span>
+            <span class="history-badge">${item.durationSec ? `${item.durationSec}s` : 'Done'}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    elements.historyModal.style.display = 'flex';
+  } catch (err) {
+    showToast('Could not load scan history', 'danger');
+  }
+}
+
+function closeHistoryModal() {
+  elements.historyModal.style.display = 'none';
 }
 
 // Filter and Sort Services
@@ -521,6 +650,12 @@ function initEventListeners() {
     });
   });
 
+  // Header status badge click -> opens history / status modal
+  elements.headerScanStatusBadge.addEventListener('click', openHistoryModal);
+  elements.openHistoryModalBtn.addEventListener('click', openHistoryModal);
+  elements.closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
+  elements.closeHistoryModalBtn2.addEventListener('click', closeHistoryModal);
+
   // Scan modal open / close
   const openModal = () => {
     elements.scanModal.style.display = 'flex';
@@ -677,6 +812,9 @@ function initEventListeners() {
     }
     if (e.target === elements.editModal) {
       elements.editModal.style.display = 'none';
+    }
+    if (e.target === elements.historyModal) {
+      elements.historyModal.style.display = 'none';
     }
   });
 }

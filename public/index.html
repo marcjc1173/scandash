@@ -41,6 +41,11 @@
           <span class="pulse-dot"></span>
           <span class="server-port-text" id="envPortLabel">PORT :3000</span>
         </div>
+
+        <button class="scan-status-badge" id="headerScanStatusBadge" title="Click to view Scan Status & History">
+          <span class="status-indicator-dot" id="statusIndicatorDot"></span>
+          <span class="scan-status-text" id="headerScanStatusText">Ready to Scan</span>
+        </button>
       </div>
 
       <div class="header-center">
@@ -55,6 +60,14 @@
       </div>
 
       <div class="header-right">
+        <button class="btn btn-secondary" id="openHistoryModalBtn" title="View scan history & recent logs">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>History</span>
+        </button>
+
         <button class="btn btn-secondary" id="refreshAllBtn" title="Refresh all services status">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
@@ -320,6 +333,47 @@
             </div>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Scan History & Details Modal -->
+    <div class="modal-backdrop" id="historyModal" style="display: none;">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Scan History & Status</h3>
+              <p class="modal-subtitle">Recent port scans and discovery logs</p>
+            </div>
+          </div>
+          <button class="modal-close-btn" id="closeHistoryModalBtn">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="current-scan-card" id="historyActiveScanCard" style="display: none;">
+            <div class="active-scan-header">
+              <span class="pulse-dot"></span>
+              <span class="active-scan-title">Active Scan in Progress</span>
+            </div>
+            <div class="active-scan-details" id="historyActiveScanDetails">
+              Scanning...
+            </div>
+          </div>
+
+          <div class="history-list" id="historyListContainer">
+            <div class="history-empty" id="historyEmpty">No scans recorded yet.</div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="closeHistoryModalBtn2">Close</button>
+        </div>
       </div>
     </div>
 

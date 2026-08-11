@@ -164,6 +164,7 @@ body {
 .brand-title span {
   background: var(--primary-gradient);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -186,6 +187,57 @@ body {
   font-family: var(--font-mono);
   font-size: 0.8rem;
   color: var(--primary);
+}
+
+.scan-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 20px;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #34d399;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.scan-status-badge:hover {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.scan-status-badge.scanning {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.4);
+  color: var(--primary);
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.scan-status-badge.complete {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.status-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+.scan-status-badge.scanning .status-indicator-dot {
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+  animation: pulseLight 1s infinite ease-in-out;
+}
+.scan-status-badge.stopped .status-indicator-dot {
+  background: var(--warning);
+  box-shadow: 0 0 8px var(--warning);
 }
 
 .pulse-dot {
@@ -698,6 +750,7 @@ body {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -1078,6 +1131,110 @@ body {
 @keyframes toastIn {
   from { transform: translateX(50px); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
+}
+
+/* Modal Large */
+.modal-dialog.modal-lg {
+  max-width: 680px;
+}
+
+/* Current Active Scan Card in Modal */
+.current-scan-card {
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.active-scan-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.active-scan-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.active-scan-details {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+}
+
+/* History List */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.history-item:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.history-target {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.history-time {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.history-badge.success {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  font-weight: 600;
+}
+
+.history-empty {
+  text-align: center;
+  padding: 30px 10px;
+  color: var(--text-dim);
+  font-size: 0.88rem;
 }
 
 /* Responsive Breakpoints */
