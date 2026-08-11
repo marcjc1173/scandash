@@ -14,6 +14,11 @@
 </p>
 
 <p align="center">
+  <img src="./assets/dashboard.png" alt="ScanDash Dashboard Preview" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px;">
+</p>
+
+### 🎬 Interactive Walkthrough Demo
+<p align="center">
   <img src="./assets/scandash_demo.gif" alt="ScanDash Interactive Walkthrough Demo" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
 </p>
 
