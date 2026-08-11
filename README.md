@@ -12,6 +12,10 @@
   <img src="https://img.shields.io/badge/Puppeteer-Headless%20Thumbnails-orange.svg" alt="Thumbnails">
 </p>
 
+<p align="center">
+  <img src="./assets/dashboard.png" alt="ScanDash Dashboard Preview" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+</p>
+
 ---
 
 ## ✨ Features
