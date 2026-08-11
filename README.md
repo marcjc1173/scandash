@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/Scan%20Speed-15%2C000%2B%20ports%2Fsec-cyan.svg" alt="Speed">
   <img src="https://img.shields.io/badge/Puppeteer-Headless%20Thumbnails-orange.svg" alt="Thumbnails">
-  <a href="#-support--buy-me-a-coffee"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-yellow.svg" alt="Buy Me a Coffee"></a>
+  <a href="https://buymeacoffee.com/marcjc1173" target="_blank"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-yellow.svg" alt="Buy Me a Coffee"></a>
 </p>
 
 <p align="center">
@@ -143,7 +143,7 @@ node test/verify_all.js
 If you find **ScanDash** useful and would like to support its ongoing development, consider buying me a coffee!
 
 <p align="left">
-  <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank">
+  <a href="https://buymeacoffee.com/marcjc1173" target="_blank">
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="48" style="border-radius: 8px;">
   </a>
 </p>
