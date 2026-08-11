@@ -38,19 +38,41 @@ const COMMON_SERVICE_NAMES = {
 };
 
 /**
- * Fetch HTTP or HTTPS URL with timeout & redirect following
+ * Fetch HTTP or HTTPS URL with hard timeout watchdog & early title resolution
  */
-function fetchUrl(url, timeoutMs = 4000) {
+function fetchUrl(url, timeoutMs = 3500) {
   return new Promise((resolve, reject) => {
+    let timer = null;
+    let settled = false;
+    let req = null;
+
+    const cleanup = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    // Hard timeout watchdog
+    timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        if (req) {
+          try { req.destroy(); } catch {}
+        }
+        reject(new Error(`HTTP probe timed out after ${timeoutMs}ms`));
+      }
+    }, timeoutMs);
+
     try {
       const urlObj = new URL(url);
       const isHttps = urlObj.protocol === 'https:';
       const client = isHttps ? https : http;
 
-      const req = client.get(
+      req = client.get(
         url,
         {
-          timeout: timeoutMs,
           rejectUnauthorized: false, // Accept self-signed SSL certs on local devices
           headers: {
             'User-Agent': 'ScanDash/1.0 (Network Service Discovery)',
@@ -62,32 +84,53 @@ function fetchUrl(url, timeoutMs = 4000) {
           res.setEncoding('utf8');
 
           res.on('data', chunk => {
-            if (rawData.length < 50000) {
+            if (rawData.length < 65536) {
               rawData += chunk;
+            }
+            // If we have received the page title or head, resolve early!
+            if (rawData.includes('</title>') || rawData.includes('</head>') || rawData.length >= 16384) {
+              if (!settled) {
+                settled = true;
+                cleanup();
+                try { req.destroy(); } catch {}
+                resolve({
+                  statusCode: res.statusCode || 200,
+                  headers: res.headers || {},
+                  body: rawData,
+                  finalUrl: url
+                });
+              }
             }
           });
 
           res.on('end', () => {
-            resolve({
-              statusCode: res.statusCode || 200,
-              headers: res.headers,
-              body: rawData,
-              finalUrl: url
-            });
+            if (!settled) {
+              settled = true;
+              cleanup();
+              resolve({
+                statusCode: res.statusCode || 200,
+                headers: res.headers || {},
+                body: rawData,
+                finalUrl: url
+              });
+            }
           });
         }
       );
 
-      req.on('timeout', () => {
-        req.destroy();
-        reject(new Error('HTTP request timed out'));
-      });
-
       req.on('error', err => {
-        reject(err);
+        if (!settled) {
+          settled = true;
+          cleanup();
+          reject(err);
+        }
       });
     } catch (err) {
-      reject(err);
+      if (!settled) {
+        settled = true;
+        cleanup();
+        reject(err);
+      }
     }
   });
 }

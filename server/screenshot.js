@@ -81,38 +81,37 @@ export function clearThumbnailQueue() {
 }
 
 /**
- * Process queue with concurrency limit
+ * Process queue with concurrency pool
  */
-async function processQueue() {
-  if (activeWorkers >= MAX_CONCURRENT || queue.length === 0) {
-    return;
-  }
+function processQueue() {
+  while (activeWorkers < MAX_CONCURRENT && queue.length > 0) {
+    activeWorkers++;
+    const task = queue.shift();
 
-  activeWorkers++;
-  const task = queue.shift();
+    (async (t) => {
+      try {
+        const thumbUrl = await captureThumbnail(t.serviceId, t.url);
+        queuedIds.delete(t.serviceId);
 
-  try {
-    const thumbUrl = await captureThumbnail(task.serviceId, task.url);
-    queuedIds.delete(task.serviceId);
-
-    if (thumbUrl) {
-      const updated = updateService(task.serviceId, { thumbnail: thumbUrl });
-      if (task.onComplete) {
-        task.onComplete(updated || { id: task.serviceId, thumbnail: thumbUrl });
+        if (thumbUrl) {
+          const updated = updateService(t.serviceId, { thumbnail: thumbUrl });
+          if (t.onComplete) {
+            t.onComplete(updated || { id: t.serviceId, thumbnail: thumbUrl });
+          }
+        }
+      } catch (err) {
+        queuedIds.delete(t.serviceId);
+        console.warn(`Queue thumbnail error for ${t.serviceId}:`, err.message);
+      } finally {
+        activeWorkers--;
+        setImmediate(processQueue);
       }
-    }
-  } catch (err) {
-    queuedIds.delete(task.serviceId);
-    console.warn(`Queue thumbnail error for ${task.serviceId}:`, err.message);
-  } finally {
-    activeWorkers--;
-    // Process next item in queue
-    setImmediate(processQueue);
+    })(task);
   }
 }
 
 /**
- * Capture thumbnail screenshot of a web service URL
+ * Capture thumbnail screenshot of a web service URL with hard watchdog
  */
 export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEOUT_MS) {
   if (!url) return null;
@@ -135,52 +134,64 @@ export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEO
   const outputPath = path.join(thumbnailsDir, safeFilename);
 
   let page = null;
-  try {
-    page = await browser.newPage();
-    page.setDefaultNavigationTimeout(timeoutMs);
-    page.setDefaultTimeout(timeoutMs);
+  let watchdog = null;
 
-    await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
-    
-    // Set realistic User-Agent for modern web apps
-    await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+  return new Promise(async (resolve) => {
+    let resolved = false;
 
-    // Ignore SSL errors for local certs
-    await page.setBypassCSP(true);
+    const finish = (result) => {
+      if (!resolved) {
+        resolved = true;
+        if (watchdog) clearTimeout(watchdog);
+        if (page) {
+          try { page.close().catch(() => {}); } catch {}
+        }
+        resolve(result);
+      }
+    };
 
-    // Navigate to target URL using 'domcontentloaded' so active WebSockets/SSE don't block
+    // 12-second hard watchdog timer
+    watchdog = setTimeout(() => {
+      console.warn(`Thumbnail capture watchdog triggered for ${targetUrl}`);
+      finish(null);
+    }, timeoutMs + 4000);
+
     try {
-      await page.goto(targetUrl, {
-        waitUntil: 'domcontentloaded',
-        timeout: timeoutMs
-      });
-    } catch (navErr) {
-      // If error occurs, check if frame still attached
-      console.warn(`Navigation warning for ${targetUrl}: ${navErr.message}`);
-    }
+      page = await browser.newPage();
+      page.setDefaultNavigationTimeout(timeoutMs);
+      page.setDefaultTimeout(timeoutMs);
 
-    // Wait for Single Page App dynamic rendering (React, Vue, Plex, Grafana, etc.)
-    const isPlex = targetUrl.includes('32400') || targetUrl.includes('plex');
-    const renderWaitMs = isPlex ? 3000 : DEFAULT_WAIT_MS;
+      await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+      await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+      await page.setBypassCSP(true);
 
-    await new Promise(r => setTimeout(r, renderWaitMs));
-
-    // Save screenshot
-    await page.screenshot({
-      path: outputPath,
-      type: 'webp',
-      quality: 85
-    });
-
-    return `/api/thumbnails/${safeFilename}`;
-  } catch (err) {
-    console.warn(`Thumbnail capture skipped for ${targetUrl}: ${err.message}`);
-    return null;
-  } finally {
-    if (page) {
+      // Navigate
       try {
-        await page.close();
-      } catch {}
+        await page.goto(targetUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: timeoutMs
+        });
+      } catch (navErr) {
+        console.warn(`Navigation warning for ${targetUrl}: ${navErr.message}`);
+      }
+
+      // Wait for Single Page App dynamic rendering (React, Vue, Plex, Grafana, etc.)
+      const isPlex = targetUrl.includes('32400') || targetUrl.includes('plex');
+      const renderWaitMs = isPlex ? 2500 : DEFAULT_WAIT_MS;
+
+      await new Promise(r => setTimeout(r, renderWaitMs));
+
+      // Save screenshot
+      await page.screenshot({
+        path: outputPath,
+        type: 'webp',
+        quality: 85
+      });
+
+      finish(`/api/thumbnails/${safeFilename}`);
+    } catch (err) {
+      console.warn(`Thumbnail capture skipped for ${targetUrl}: ${err.message}`);
+      finish(null);
     }
-  }
+  });
 }
