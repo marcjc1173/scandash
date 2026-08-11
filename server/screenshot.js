@@ -4,8 +4,9 @@ import fs from 'fs';
 import { getThumbnailsDir } from './storage.js';
 
 let browserInstance = null;
-let activeCaptures = 0;
 const MAX_CONCURRENT_SCREENSHOTS = parseInt(process.env.SCREENSHOT_CONCURRENCY || '3', 10);
+const DEFAULT_WAIT_MS = parseInt(process.env.SCREENSHOT_WAIT_MS || '3000', 10);
+const DEFAULT_TIMEOUT_MS = parseInt(process.env.SCREENSHOT_TIMEOUT || '12000', 10);
 
 /**
  * Get or initialize Puppeteer browser instance
@@ -55,8 +56,14 @@ export async function closeBrowser() {
 /**
  * Capture thumbnail screenshot of a web service URL
  */
-export async function captureThumbnail(serviceId, url, timeoutMs = 6000) {
+export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEOUT_MS) {
   if (!url) return null;
+
+  // Auto-normalize Plex URLs if needed
+  let targetUrl = url;
+  if (targetUrl.includes(':32400') && !targetUrl.includes('/web')) {
+    targetUrl = targetUrl.replace(/\/+$/, '') + '/web/index.html';
+  }
 
   const browser = await getBrowser();
   if (!browser) return null;
@@ -70,23 +77,30 @@ export async function captureThumbnail(serviceId, url, timeoutMs = 6000) {
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
     
+    // Set realistic User-Agent for modern web apps
+    await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+
     // Ignore SSL errors for local certs
     await page.setBypassCSP(true);
 
     // Navigate to target URL
-    await page.goto(url, {
+    await page.goto(targetUrl, {
       waitUntil: ['domcontentloaded', 'networkidle2'],
       timeout: timeoutMs
     });
 
-    // Wait a brief moment for dynamic client-side rendering (e.g. React/Vue dashboards)
-    await new Promise(r => setTimeout(r, 400));
+    // Wait for Single Page App (SPA) dynamic rendering (React, Vue, Plex, Grafana, etc.)
+    const isPlex = targetUrl.includes('32400') || targetUrl.includes('plex');
+    const extraWait = isPlex ? 1500 : 0;
+    const renderWaitMs = DEFAULT_WAIT_MS + extraWait;
+
+    await new Promise(r => setTimeout(r, renderWaitMs));
 
     // Save screenshot
     await page.screenshot({
       path: outputPath,
       type: 'webp',
-      quality: 80
+      quality: 85
     });
 
     return `/api/thumbnails/${safeFilename}`;
@@ -97,12 +111,12 @@ export async function captureThumbnail(serviceId, url, timeoutMs = 6000) {
         await page.screenshot({
           path: outputPath,
           type: 'webp',
-          quality: 80
+          quality: 85
         });
         return `/api/thumbnails/${safeFilename}`;
       } catch {}
     }
-    console.warn(`Thumbnail capture skipped for ${url}: ${err.message}`);
+    console.warn(`Thumbnail capture skipped for ${targetUrl}: ${err.message}`);
     return null;
   } finally {
     if (page) {

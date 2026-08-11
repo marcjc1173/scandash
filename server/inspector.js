@@ -167,9 +167,28 @@ export async function inspectService(host, port, httpTimeout = 4000) {
     : ['http', 'https'];
 
   for (const proto of tryProtocols) {
-    const targetUrl = `${proto}://${host}:${port}`;
+    let targetUrl = `${proto}://${host}:${port}`;
+    
+    // Special handling for known services like Plex Media Server (port 32400 web UI is at /web/index.html)
+    if (port === 32400) {
+      targetUrl = `${proto}://${host}:${port}/web/index.html`;
+    }
+
     try {
-      const response = await fetchUrl(targetUrl, httpTimeout);
+      let response = await fetchUrl(targetUrl, httpTimeout);
+
+      // If root returned 401 on port 32400 or has Plex header, redirect to /web/index.html
+      if (response.statusCode === 401 && (port === 32400 || response.headers['x-plex-protocol'])) {
+        try {
+          const plexWebUrl = `${proto}://${host}:${port}/web/index.html`;
+          const plexRes = await fetchUrl(plexWebUrl, httpTimeout);
+          if (plexRes.statusCode < 400 || plexRes.statusCode === 302) {
+            targetUrl = plexWebUrl;
+            response = plexRes;
+          }
+        } catch {}
+      }
+
       result.isWeb = true;
       result.protocol = proto;
       result.url = targetUrl;
@@ -177,13 +196,18 @@ export async function inspectService(host, port, httpTimeout = 4000) {
       result.serverBanner = response.headers['server'] || '';
 
       const extracted = extractTitle(response.body);
-      if (extracted) {
+      if (extracted && extracted !== 'Unauthorized') {
         result.title = extracted;
+      } else if (port === 32400 || response.headers['x-plex-protocol']) {
+        result.title = 'Plex Media Server';
       } else {
         result.title = `${proto.toUpperCase()} on ${port} (${response.statusCode})`;
       }
 
       result.tags.push('web');
+      if (port === 32400 || response.headers['x-plex-protocol']) {
+        result.tags.push('plex', 'media');
+      }
       if (proto === 'https') result.tags.push('ssl');
       if (result.serverBanner) {
         const s = result.serverBanner.toLowerCase();
