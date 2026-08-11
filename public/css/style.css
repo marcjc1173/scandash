@@ -1565,21 +1565,19 @@ body {
   }
 
   .filter-chips {
-    overflow-x: auto;
-    white-space: nowrap;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap;
-  }
-  .filter-chips::-webkit-scrollbar {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    overflow-x: visible;
+    white-space: normal;
+    padding-bottom: 0;
   }
 
   .filter-chips .chip {
-    padding: 5px 12px;
-    font-size: 0.78rem;
-    flex-shrink: 0;
+    padding: 5px 10px;
+    font-size: 0.76rem;
+    flex: 0 1 auto;
+    border-radius: 8px;
   }
 
   .view-controls {
