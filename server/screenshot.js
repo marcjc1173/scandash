@@ -1,12 +1,17 @@
 import puppeteer from 'puppeteer';
 import path from 'path';
 import fs from 'fs';
-import { getThumbnailsDir } from './storage.js';
+import { getThumbnailsDir, updateService } from './storage.js';
 
 let browserInstance = null;
-const MAX_CONCURRENT_SCREENSHOTS = parseInt(process.env.SCREENSHOT_CONCURRENCY || '3', 10);
-const DEFAULT_WAIT_MS = parseInt(process.env.SCREENSHOT_WAIT_MS || '3000', 10);
-const DEFAULT_TIMEOUT_MS = parseInt(process.env.SCREENSHOT_TIMEOUT || '12000', 10);
+const MAX_CONCURRENT = parseInt(process.env.SCREENSHOT_CONCURRENCY || '2', 10);
+const DEFAULT_WAIT_MS = parseInt(process.env.SCREENSHOT_WAIT_MS || '2500', 10);
+const DEFAULT_TIMEOUT_MS = parseInt(process.env.SCREENSHOT_TIMEOUT || '10000', 10);
+
+// Managed Queue State
+const queue = [];
+let activeWorkers = 0;
+const queuedIds = new Set();
 
 /**
  * Get or initialize Puppeteer browser instance
@@ -54,12 +59,65 @@ export async function closeBrowser() {
 }
 
 /**
+ * Queue a thumbnail generation request
+ */
+export function queueThumbnail(serviceId, url, onComplete) {
+  if (!url || !serviceId) return;
+
+  // Prevent duplicate queue entries for the same service
+  if (queuedIds.has(serviceId)) return;
+  queuedIds.add(serviceId);
+
+  queue.push({ serviceId, url, onComplete });
+  processQueue();
+}
+
+/**
+ * Clear pending thumbnail queue (e.g. on clear all or scan abort)
+ */
+export function clearThumbnailQueue() {
+  queue.length = 0;
+  queuedIds.clear();
+}
+
+/**
+ * Process queue with concurrency limit
+ */
+async function processQueue() {
+  if (activeWorkers >= MAX_CONCURRENT || queue.length === 0) {
+    return;
+  }
+
+  activeWorkers++;
+  const task = queue.shift();
+
+  try {
+    const thumbUrl = await captureThumbnail(task.serviceId, task.url);
+    queuedIds.delete(task.serviceId);
+
+    if (thumbUrl) {
+      const updated = updateService(task.serviceId, { thumbnail: thumbUrl });
+      if (task.onComplete) {
+        task.onComplete(updated || { id: task.serviceId, thumbnail: thumbUrl });
+      }
+    }
+  } catch (err) {
+    queuedIds.delete(task.serviceId);
+    console.warn(`Queue thumbnail error for ${task.serviceId}:`, err.message);
+  } finally {
+    activeWorkers--;
+    // Process next item in queue
+    setImmediate(processQueue);
+  }
+}
+
+/**
  * Capture thumbnail screenshot of a web service URL
  */
 export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEOUT_MS) {
   if (!url) return null;
 
-  // Auto-normalize Plex URLs if needed
+  // Auto-normalize Plex URLs
   let targetUrl = url;
   if (targetUrl.includes(':32400') && !targetUrl.includes('/web')) {
     targetUrl = targetUrl.replace(/\/+$/, '') + '/web/index.html';
@@ -69,6 +127,10 @@ export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEO
   if (!browser) return null;
 
   const thumbnailsDir = getThumbnailsDir();
+  if (!fs.existsSync(thumbnailsDir)) {
+    fs.mkdirSync(thumbnailsDir, { recursive: true });
+  }
+
   const safeFilename = `${serviceId.replace(/[^a-zA-Z0-9_-]/g, '_')}.webp`;
   const outputPath = path.join(thumbnailsDir, safeFilename);
 
@@ -89,7 +151,7 @@ export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEO
       timeout: timeoutMs
     });
 
-    // Wait for Single Page App (SPA) dynamic rendering (React, Vue, Plex, Grafana, etc.)
+    // Wait for Single Page App dynamic rendering (React, Vue, Plex, Grafana, etc.)
     const isPlex = targetUrl.includes('32400') || targetUrl.includes('plex');
     const extraWait = isPlex ? 1500 : 0;
     const renderWaitMs = DEFAULT_WAIT_MS + extraWait;

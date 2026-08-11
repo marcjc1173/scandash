@@ -496,7 +496,19 @@ function createServiceCardHtml(service) {
   let thumbnailHtml = '';
   if (service.thumbnail) {
     thumbnailHtml = `
-      <img src="${escapeHtml(service.thumbnail)}" alt="${escapeHtml(displayName)} preview" class="card-thumbnail-img" loading="lazy">
+      <img src="${escapeHtml(service.thumbnail)}" alt="${escapeHtml(displayName)} preview" class="card-thumbnail-img" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="card-thumbnail-placeholder" style="display: none;">
+        <div class="placeholder-proto-badge">${escapeHtml(protocol)}</div>
+        <div class="placeholder-meta">${escapeHtml(service.ip)}:${service.port}</div>
+      </div>
+    `;
+  } else if (service.isWeb) {
+    thumbnailHtml = `
+      <div class="card-thumbnail-placeholder capturing">
+        <div class="progress-spinner" style="width: 28px; height: 28px; margin-bottom: 4px;"></div>
+        <div class="placeholder-proto-badge" style="font-size: 0.8rem;">Capturing preview...</div>
+        <div class="placeholder-meta">${escapeHtml(service.ip)}:${service.port}</div>
+      </div>
     `;
   } else {
     thumbnailHtml = `

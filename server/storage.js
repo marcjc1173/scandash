@@ -140,6 +140,18 @@ export function deleteService(id) {
 
 export function clearAllServices() {
   saveServices([]);
+  try {
+    if (fs.existsSync(thumbnailsDir)) {
+      const files = fs.readdirSync(thumbnailsDir);
+      for (const file of files) {
+        if (file !== '.gitkeep') {
+          try {
+            fs.unlinkSync(path.join(thumbnailsDir, file));
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {}
   return true;
 }
 

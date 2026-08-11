@@ -23,7 +23,7 @@ import {
 
 import { parseTargets, parsePorts, runScan, COMMON_PORTS } from './scanner.js';
 import { inspectService } from './inspector.js';
-import { captureThumbnail, closeBrowser } from './screenshot.js';
+import { queueThumbnail, clearThumbnailQueue, captureThumbnail, closeBrowser } from './screenshot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -189,19 +189,11 @@ app.post('/api/scan', async (req, res) => {
 
             broadcastSSE('service_found', saved);
 
-            // If it's a web service, capture screenshot thumbnail in background
+            // If it's a web service, queue managed screenshot thumbnail capture
             if (inspected.isWeb && inspected.url) {
-              (async () => {
-                try {
-                  const thumbUrl = await captureThumbnail(saved.id, inspected.url);
-                  if (thumbUrl) {
-                    const updated = updateService(saved.id, { thumbnail: thumbUrl });
-                    broadcastSSE('service_updated', updated);
-                  }
-                } catch (thumbErr) {
-                  console.warn(`Thumbnail capture failed for ${saved.id}:`, thumbErr.message);
-                }
-              })();
+              queueThumbnail(saved.id, inspected.url, updated => {
+                broadcastSSE('service_updated', updated);
+              });
             }
           } catch (inspectErr) {
             console.error(`Inspection failed for ${host}:${port}:`, inspectErr);
@@ -316,6 +308,7 @@ app.delete('/api/services/:id', (req, res) => {
 
 // API: Clear All Services
 app.delete('/api/services', (req, res) => {
+  clearThumbnailQueue();
   clearAllServices();
   broadcastSSE('services_cleared', {});
   res.json({ message: 'All services cleared' });
