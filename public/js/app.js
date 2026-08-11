@@ -78,17 +78,48 @@ const elements = {
   deleteFromEditModalBtn: document.getElementById('deleteFromEditModalBtn'),
   editModalSub: document.getElementById('editModalSub'),
 
+  // Theme Toggle
+  themeToggleBtn: document.getElementById('themeToggleBtn'),
+  themeIconMoon: document.querySelector('.theme-icon-moon'),
+  themeIconSun: document.querySelector('.theme-icon-sun'),
+
   toastContainer: document.getElementById('toastContainer')
 };
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   initEventListeners();
   loadConfigAndNetwork();
   loadServices();
   loadInitialScanStatus();
   initSSE();
 });
+
+// Theme Management
+function initTheme() {
+  const savedTheme = localStorage.getItem('scandash_theme') || 'dark';
+  applyTheme(savedTheme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('scandash_theme', theme);
+  if (theme === 'light') {
+    if (elements.themeIconMoon) elements.themeIconMoon.style.display = 'none';
+    if (elements.themeIconSun) elements.themeIconSun.style.display = 'block';
+  } else {
+    if (elements.themeIconMoon) elements.themeIconMoon.style.display = 'block';
+    if (elements.themeIconSun) elements.themeIconSun.style.display = 'none';
+  }
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  applyTheme(newTheme);
+  showToast(`Switched to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} Mode`, 'info');
+}
 
 // Toast notification helper
 function showToast(message, type = 'info') {
@@ -649,6 +680,11 @@ function initEventListeners() {
       renderServices();
     });
   });
+
+  // Theme toggle button
+  if (elements.themeToggleBtn) {
+    elements.themeToggleBtn.addEventListener('click', toggleTheme);
+  }
 
   // Header status badge click -> opens history / status modal
   elements.headerScanStatusBadge.addEventListener('click', openHistoryModal);
