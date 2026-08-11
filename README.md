@@ -24,6 +24,28 @@
 
 ---
 
+## 💡 Why ScanDash? The Next Progression in Dashboard Automation
+
+While fantastic self-hosted dashboards exist today (like *Homepage*, *Dashy*, *Flame*, and *Heimdall*), almost all of them share the same fundamental friction: **manual configuration**.
+
+You have to manually look up IP addresses, find port numbers, write YAML or JSON configuration files, hunt down app icons, and continuously update them when ports or containers change.
+
+**ScanDash introduces a zero-config, automated paradigm:**
+
+| Capability | Traditional Dashboards *(Homepage, Dashy, Heimdall)* | ⚡ ScanDash |
+| :--- | :--- | :--- |
+| **Initial Setup** | 📝 Manual YAML/JSON editing or Docker labels | 🚀 **Zero-Config**: Enter IP/subnet and scan |
+| **Discovery** | 🔍 Manual port tracking & lookup | ⚡ **Automated 65,535 Port Scanner** (~15,000+ ports/sec) |
+| **Visuals** | 🎨 Static icons or manual logo hunting | 📸 **Automated Real Live Screenshots** via headless Chromium |
+| **SPAs & Media** | ❌ Static placeholder links | 🎬 Auto-resolves SPAs, Plex Web (`/web`), and rendered interfaces |
+| **Quick Access** | 📌 Standard bookmark links | ⭐ **Quick-Launch Shelf** with instant keyboard shortcuts (`1`–`9`) |
+| **Customization** | 📝 Edit YAML & restart container | 🎛️ **Direct in-browser card editing**, re-probing & custom tags |
+| **Backup** | 📁 Manually copy mounted config folders | 💾 **One-Click JSON Export / Import** (Merge or Clean Restore) |
+
+> **Bottom line**: Instead of spending hours writing configuration files, **ScanDash scans your network, captures live preview thumbnails of your web apps, and builds a fully interactive dashboard in seconds.**
+
+---
+
 ## ✨ Features
 
 - ⚙️ **`.env` Configurable Port**: Run on any port specified in `.env` (`PORT=3500`, `PORT=8080`, etc.).
