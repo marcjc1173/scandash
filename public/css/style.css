@@ -1417,21 +1417,275 @@ body {
   gap: 10px;
 }
 
-/* Responsive Breakpoints */
-@media (max-width: 900px) {
-  .app-header {
-    flex-direction: column;
-    align-items: stretch;
+/* ==========================================================================
+   📱 Responsive Breakpoints & Mobile Layout System
+   ========================================================================== */
+
+/* Tablet & Compact Screens (<= 960px) */
+@media (max-width: 960px) {
+  .app-container {
+    padding: 14px 16px 40px;
   }
-  .header-left, .header-center, .header-right {
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 18px;
+  }
+
+  .header-left {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .header-center {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  .header-right {
+    order: 2;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .services-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+}
+
+/* Mobile Devices (<= 640px) */
+@media (max-width: 640px) {
+  .app-container {
+    padding: 10px 12px 32px;
+  }
+
+  .app-header {
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .brand-subtitle {
+    display: none; /* Hide subtitle on tiny screens for compactness */
+  }
+
+  .header-badge {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+  }
+
+  .header-right {
     width: 100%;
     justify-content: space-between;
+    display: flex;
   }
-  .port-radio-grid {
-    grid-template-columns: 1fr;
+
+  .header-right .btn-secondary span {
+    display: none; /* Icon-only for secondary buttons on mobile */
   }
+
+  .header-right .btn-secondary {
+    padding: 8px 10px;
+  }
+
+  #openScanModalBtn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Scan Progress HUD Banner */
+  .scan-progress-panel {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+
   .progress-inner {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
+  }
+
+  .progress-info-block {
+    width: 100%;
+  }
+
+  .progress-actions {
+    width: 100%;
+  }
+
+  .progress-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Quick-Launch Favorites Shelf */
+  .favorites-shelf {
+    padding: 10px 12px;
+    margin-bottom: 16px;
+  }
+
+  .favorites-shelf-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .favorites-pills-row {
+    gap: 8px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .favorites-pills-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .favorite-pill {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* Subheader Filter & Stats Bar */
+  .stats-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .filter-chips {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .filter-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-chips .chip {
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+
+  .view-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sort-dropdown {
+    flex: 1;
+  }
+
+  .sort-dropdown select {
+    width: 100%;
+  }
+
+  /* Single Column Card Grid on Phones */
+  .services-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .service-card {
+    border-radius: var(--radius-lg);
+  }
+
+  .card-thumbnail-wrap {
+    height: 180px;
+  }
+
+  .card-footer {
+    padding: 10px 14px;
+  }
+
+  .action-icon-btn {
+    min-width: 38px;
+    min-height: 38px;
+    padding: 8px;
+  }
+
+  .open-link-btn {
+    padding: 8px 16px;
+    font-size: 0.88rem;
+  }
+
+  /* Mobile Bottom-Sheet Modal Dialogs */
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-dialog {
+    max-width: 100%;
+    max-height: 88vh;
+    border-radius: 20px 20px 0 0;
+    margin: 0;
+    animation: slideUpBottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUpBottom {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-header {
+    padding: 16px 18px;
+  }
+
+  .modal-body {
+    padding: 16px 18px;
+    max-height: calc(88vh - 130px);
+    overflow-y: auto;
+  }
+
+  .modal-footer {
+    padding: 14px 18px;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-card);
+    z-index: 2;
+  }
+
+  /* Touch input size to prevent iOS auto-zoom */
+  input[type="text"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .port-radio-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .scan-options-row {
+    grid-template-columns: 1fr;
+  }
+
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .history-meta {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
