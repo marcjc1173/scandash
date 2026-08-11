@@ -6,7 +6,7 @@ import { getThumbnailsDir, updateService } from './storage.js';
 let browserInstance = null;
 const MAX_CONCURRENT = parseInt(process.env.SCREENSHOT_CONCURRENCY || '2', 10);
 const DEFAULT_WAIT_MS = parseInt(process.env.SCREENSHOT_WAIT_MS || '2500', 10);
-const DEFAULT_TIMEOUT_MS = parseInt(process.env.SCREENSHOT_TIMEOUT || '10000', 10);
+const DEFAULT_TIMEOUT_MS = parseInt(process.env.SCREENSHOT_TIMEOUT || '8000', 10);
 
 // Managed Queue State
 const queue = [];
@@ -73,7 +73,7 @@ export function queueThumbnail(serviceId, url, onComplete) {
 }
 
 /**
- * Clear pending thumbnail queue (e.g. on clear all or scan abort)
+ * Clear pending thumbnail queue
  */
 export function clearThumbnailQueue() {
   queue.length = 0;
@@ -137,6 +137,9 @@ export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEO
   let page = null;
   try {
     page = await browser.newPage();
+    page.setDefaultNavigationTimeout(timeoutMs);
+    page.setDefaultTimeout(timeoutMs);
+
     await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
     
     // Set realistic User-Agent for modern web apps
@@ -145,16 +148,20 @@ export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEO
     // Ignore SSL errors for local certs
     await page.setBypassCSP(true);
 
-    // Navigate to target URL
-    await page.goto(targetUrl, {
-      waitUntil: ['domcontentloaded', 'networkidle2'],
-      timeout: timeoutMs
-    });
+    // Navigate to target URL using 'domcontentloaded' so active WebSockets/SSE don't block
+    try {
+      await page.goto(targetUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: timeoutMs
+      });
+    } catch (navErr) {
+      // If error occurs, check if frame still attached
+      console.warn(`Navigation warning for ${targetUrl}: ${navErr.message}`);
+    }
 
     // Wait for Single Page App dynamic rendering (React, Vue, Plex, Grafana, etc.)
     const isPlex = targetUrl.includes('32400') || targetUrl.includes('plex');
-    const extraWait = isPlex ? 1500 : 0;
-    const renderWaitMs = DEFAULT_WAIT_MS + extraWait;
+    const renderWaitMs = isPlex ? 3000 : DEFAULT_WAIT_MS;
 
     await new Promise(r => setTimeout(r, renderWaitMs));
 
@@ -167,17 +174,6 @@ export async function captureThumbnail(serviceId, url, timeoutMs = DEFAULT_TIMEO
 
     return `/api/thumbnails/${safeFilename}`;
   } catch (err) {
-    // If timeout or navigation error, try taking screenshot anyway if DOM exists
-    if (page) {
-      try {
-        await page.screenshot({
-          path: outputPath,
-          type: 'webp',
-          quality: 85
-        });
-        return `/api/thumbnails/${safeFilename}`;
-      } catch {}
-    }
     console.warn(`Thumbnail capture skipped for ${targetUrl}: ${err.message}`);
     return null;
   } finally {
