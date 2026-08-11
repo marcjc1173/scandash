@@ -77,6 +77,24 @@
           </svg>
         </button>
 
+        <div class="backup-btn-group">
+          <button class="btn btn-icon btn-secondary" id="exportBackupBtn" title="Export Dashboard Backup (JSON)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button class="btn btn-icon btn-secondary" id="importBackupBtn" title="Import Dashboard Backup (JSON)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </button>
+          <input type="file" id="importFileInput" accept=".json" style="display: none;">
+        </div>
+
         <button class="btn btn-secondary" id="openHistoryModalBtn" title="View scan history & recent logs">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
@@ -132,10 +150,27 @@
       </div>
     </section>
 
+    <!-- Quick-Launch Favorites Shelf (Active when favorite items are pinned) -->
+    <section class="favorites-shelf" id="favoritesShelf" style="display: none;">
+      <div class="favorites-shelf-header">
+        <div class="favorites-shelf-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span>Quick-Launch Favorites</span>
+        </div>
+        <span class="favorites-hint">Press <kbd>1</kbd>–<kbd>9</kbd> on keyboard to launch</span>
+      </div>
+      <div class="favorites-pills-row" id="favoritesPillsRow">
+        <!-- Favorites rendered dynamically -->
+      </div>
+    </section>
+
     <!-- Subheader Filter & Stats Bar -->
     <div class="stats-filter-bar">
       <div class="filter-chips" id="filterTagsContainer">
         <button class="chip active" data-tag="all">All Services (<span id="totalCount">0</span>)</button>
+        <button class="chip" data-tag="favorites">⭐ Favorites (<span id="favoritesCount">0</span>)</button>
         <button class="chip" data-tag="web">Web (<span id="webCount">0</span>)</button>
         <button class="chip" data-tag="ssl">HTTPS (<span id="sslCount">0</span>)</button>
         <button class="chip" data-tag="ssh">SSH / Remote</button>
@@ -147,6 +182,7 @@
           <label for="sortSelect">Sort by:</label>
           <select id="sortSelect">
             <option value="recent">Recently Discovered</option>
+            <option value="favorites">⭐ Favorites First</option>
             <option value="port">Port Number</option>
             <option value="ip">IP Address</option>
             <option value="name">Service Name</option>
@@ -390,6 +426,66 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="closeHistoryModalBtn2">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Backup Modal -->
+    <div class="modal-backdrop" id="importModal" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Import Dashboard Backup</h3>
+              <p class="modal-subtitle" id="importModalSub">Restore your saved cards and configuration</p>
+            </div>
+          </div>
+          <button class="modal-close-btn" id="closeImportModalBtn">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="import-summary-card">
+            <div class="import-file-name" id="importFileName">scandash-backup.json</div>
+            <div class="import-file-meta" id="importFileMeta">Found 0 services in backup file.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Import Mode</label>
+            <div class="import-mode-options">
+              <label class="radio-card active">
+                <input type="radio" name="importMode" value="merge" checked>
+                <div class="radio-card-content">
+                  <div class="radio-card-title">Merge with Existing</div>
+                  <div class="radio-card-desc">Add new cards and update existing configurations without deleting current services</div>
+                </div>
+              </label>
+
+              <label class="radio-card">
+                <input type="radio" name="importMode" value="replace">
+                <div class="radio-card-content">
+                  <div class="radio-card-title">Replace All (Clean Restore)</div>
+                  <div class="radio-card-desc">Overwrite existing dashboard cards with the imported backup file</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelImportModalBtn">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmImportBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span>Confirm Import</span>
+          </button>
         </div>
       </div>
     </div>

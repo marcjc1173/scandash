@@ -15,6 +15,8 @@ import {
   getServiceById,
   upsertService,
   updateService,
+  toggleFavorite,
+  importServices,
   deleteService,
   clearAllServices,
   addScanHistory,
@@ -293,6 +295,47 @@ app.put('/api/services/:id', (req, res) => {
 
   broadcastSSE('service_updated', updated);
   res.json(updated);
+});
+
+// API: Toggle Favorite Status
+app.post('/api/services/:id/favorite', (req, res) => {
+  const updated = toggleFavorite(req.params.id);
+  if (!updated) {
+    return res.status(404).json({ error: 'Service not found' });
+  }
+  broadcastSSE('service_updated', updated);
+  res.json(updated);
+});
+
+// API: Export Backup Configuration (JSON)
+app.get('/api/backup/export', (req, res) => {
+  const services = getServices();
+  const history = getScanHistory();
+  const backupData = {
+    version: '1.0.0',
+    exportDate: new Date().toISOString(),
+    port: PORT,
+    totalServices: services.length,
+    services,
+    scanHistory: history
+  };
+
+  const filename = `scandash-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.json(backupData);
+});
+
+// API: Import Backup Configuration (JSON)
+app.post('/api/backup/import', (req, res) => {
+  const { services, mode = 'merge' } = req.body;
+  if (!services || !Array.isArray(services)) {
+    return res.status(400).json({ error: 'Invalid backup file format: missing services array.' });
+  }
+
+  const result = importServices(services, mode);
+  broadcastSSE('services_reloaded', { count: result.total });
+  res.json({ message: 'Backup imported successfully', ...result });
 });
 
 // API: Delete Service Card

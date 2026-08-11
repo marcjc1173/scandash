@@ -74,6 +74,7 @@ export function upsertService(serviceData) {
       customTitle: existing.customTitle,
       customUrl: existing.customUrl,
       customIcon: existing.customIcon,
+      isFavorite: existing.isFavorite !== undefined ? existing.isFavorite : false,
       tags: existing.tags && existing.tags.length > 0 ? existing.tags : serviceData.tags || [],
       notes: existing.notes !== undefined ? existing.notes : serviceData.notes || '',
       thumbnail: serviceData.thumbnail || existing.thumbnail,
@@ -92,6 +93,7 @@ export function upsertService(serviceData) {
       customTitle: null,
       customUrl: null,
       customIcon: null,
+      isFavorite: serviceData.isFavorite || false,
       statusCode: serviceData.statusCode || 200,
       serverBanner: serviceData.serverBanner || '',
       thumbnail: serviceData.thumbnail || null,
@@ -105,6 +107,58 @@ export function upsertService(serviceData) {
     saveServices(services);
     return newService;
   }
+}
+
+export function toggleFavorite(id) {
+  const services = getServices();
+  const index = services.findIndex(s => s.id === id);
+  if (index === -1) return null;
+
+  services[index].isFavorite = !services[index].isFavorite;
+  saveServices(services);
+  return services[index];
+}
+
+export function importServices(importedList, mode = 'merge') {
+  initStorage();
+  if (!Array.isArray(importedList)) return false;
+
+  if (mode === 'replace') {
+    saveServices(importedList);
+    return { addedCount: importedList.length, updatedCount: 0, total: importedList.length };
+  }
+
+  // Merge mode
+  const current = getServices();
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  for (const item of importedList) {
+    if (!item.id && (!item.ip || !item.port)) continue;
+    const id = item.id || `${item.ip}:${item.port}`;
+    const idx = current.findIndex(s => s.id === id);
+    if (idx >= 0) {
+      current[idx] = {
+        ...current[idx],
+        ...item,
+        id
+      };
+      updatedCount++;
+    } else {
+      current.push({
+        ...item,
+        id,
+        isFavorite: item.isFavorite || false,
+        online: item.online !== undefined ? item.online : true,
+        firstSeen: item.firstSeen || new Date().toISOString(),
+        lastSeen: new Date().toISOString()
+      });
+      addedCount++;
+    }
+  }
+
+  saveServices(current);
+  return { addedCount, updatedCount, total: current.length };
 }
 
 export function updateService(id, updates) {

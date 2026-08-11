@@ -12,7 +12,8 @@ const state = {
   networkInfo: null,
   config: null,
   lastScanResult: null,
-  scanHistory: []
+  scanHistory: [],
+  pendingImportData: null
 };
 
 // DOM Elements
@@ -20,6 +21,7 @@ const elements = {
   servicesGrid: document.getElementById('servicesGrid'),
   emptyState: document.getElementById('emptyState'),
   totalCount: document.getElementById('totalCount'),
+  favoritesCount: document.getElementById('favoritesCount'),
   webCount: document.getElementById('webCount'),
   sslCount: document.getElementById('sslCount'),
   envPortLabel: document.getElementById('envPortLabel'),
@@ -31,6 +33,21 @@ const elements = {
   // Header Scan Status
   headerScanStatusBadge: document.getElementById('headerScanStatusBadge'),
   headerScanStatusText: document.getElementById('headerScanStatusText'),
+
+  // Quick-Launch Favorites Shelf
+  favoritesShelf: document.getElementById('favoritesShelf'),
+  favoritesPillsRow: document.getElementById('favoritesPillsRow'),
+
+  // Backup & Import
+  exportBackupBtn: document.getElementById('exportBackupBtn'),
+  importBackupBtn: document.getElementById('importBackupBtn'),
+  importFileInput: document.getElementById('importFileInput'),
+  importModal: document.getElementById('importModal'),
+  closeImportModalBtn: document.getElementById('closeImportModalBtn'),
+  cancelImportModalBtn: document.getElementById('cancelImportModalBtn'),
+  confirmImportBtn: document.getElementById('confirmImportBtn'),
+  importFileName: document.getElementById('importFileName'),
+  importFileMeta: document.getElementById('importFileMeta'),
 
   // Modals & Panels
   scanModal: document.getElementById('scanModal'),
@@ -90,6 +107,7 @@ const elements = {
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initEventListeners();
+  initKeyboardShortcuts();
   loadConfigAndNetwork();
   loadServices();
   loadInitialScanStatus();
@@ -249,6 +267,7 @@ async function loadServices() {
     const res = await fetch('/api/services');
     state.services = await res.json();
     renderServices();
+    renderFavoritesShelf();
   } catch (err) {
     console.error('Failed to load services:', err);
     showToast('Could not load services from server', 'danger');
@@ -294,6 +313,7 @@ function initSSE() {
       state.services.unshift(service);
     }
     renderServices();
+    renderFavoritesShelf();
   });
 
   evtSource.addEventListener('service_updated', e => {
@@ -302,6 +322,7 @@ function initSSE() {
     if (existingIndex >= 0) {
       state.services[existingIndex] = service;
       renderServices();
+      renderFavoritesShelf();
     }
   });
 
@@ -309,11 +330,17 @@ function initSSE() {
     const { id } = JSON.parse(e.data);
     state.services = state.services.filter(s => s.id !== id);
     renderServices();
+    renderFavoritesShelf();
   });
 
   evtSource.addEventListener('services_cleared', () => {
     state.services = [];
     renderServices();
+    renderFavoritesShelf();
+  });
+
+  evtSource.addEventListener('services_reloaded', () => {
+    loadServices();
   });
 
   evtSource.addEventListener('scan_completed', e => {
@@ -323,13 +350,11 @@ function initSSE() {
     updateScanStatusBadge('complete', `Scan Complete • ${data.openDiscovered || 0} found in ${data.durationSec}s`);
     showToast(`Scan complete: ${data.openDiscovered || 0} open services discovered in ${data.durationSec}s`, 'success');
     
-    // Update progress HUD to completed view
     elements.scanTargetLabel.textContent = `✅ Scan Completed across ${data.totalScanned?.toLocaleString()} ports in ${data.durationSec}s`;
     elements.scanMetaLabel.textContent = `Found ${data.openDiscovered || 0} open services • 100% complete`;
     elements.scanProgressFill.style.width = '100%';
     elements.scanPercentText.textContent = '100%';
 
-    // Refresh history
     fetch('/api/history').then(r => r.json()).then(h => { state.scanHistory = h; });
 
     setTimeout(() => {
@@ -360,7 +385,7 @@ function initSSE() {
   };
 }
 
-// Format Relative Time (e.g. "2m ago", "Just now")
+// Format Relative Time
 function formatRelativeTime(date) {
   const diffSec = Math.round((Date.now() - date.getTime()) / 1000);
   if (diffSec < 45) return 'Just now';
@@ -369,13 +394,64 @@ function formatRelativeTime(date) {
   return date.toLocaleDateString();
 }
 
+// Quick-Launch Favorites Shelf Renderer
+function renderFavoritesShelf() {
+  const favorites = state.services.filter(s => s.isFavorite);
+  elements.favoritesCount.textContent = favorites.length;
+
+  if (favorites.length === 0) {
+    elements.favoritesShelf.style.display = 'none';
+    elements.favoritesPillsRow.innerHTML = '';
+    return;
+  }
+
+  elements.favoritesShelf.style.display = 'block';
+  elements.favoritesPillsRow.innerHTML = favorites.slice(0, 9).map((service, index) => {
+    const displayName = service.customTitle || service.title || `${service.ip}:${service.port}`;
+    const targetUrl = service.customUrl || service.url || (service.isWeb ? `${service.protocol}://${service.ip}:${service.port}` : null);
+    const numBadge = index + 1;
+
+    return `
+      <a href="${targetUrl || '#'}" target="${targetUrl ? '_blank' : '_self'}" rel="noopener noreferrer" class="favorite-pill" title="Press '${numBadge}' on keyboard to open">
+        <span class="favorite-pill-num">${numBadge}</span>
+        ${service.thumbnail ? `<img src="${escapeHtml(service.thumbnail)}" alt="" class="favorite-pill-thumb">` : ''}
+        <span class="favorite-pill-title">${escapeHtml(displayName)}</span>
+        <span class="favorite-pill-port">:${service.port}</span>
+      </a>
+    `;
+  }).join('');
+}
+
+// Keyboard Shortcuts (1-9 to launch favorites)
+function initKeyboardShortcuts() {
+  window.addEventListener('keydown', e => {
+    // Ignore when focused in input, textarea, or modals
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+      return;
+    }
+
+    const keyNum = parseInt(e.key, 10);
+    if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
+      const favorites = state.services.filter(s => s.isFavorite);
+      const fav = favorites[keyNum - 1];
+      if (fav) {
+        const url = fav.customUrl || fav.url || (fav.isWeb ? `${fav.protocol}://${fav.ip}:${fav.port}` : null);
+        if (url) {
+          showToast(`🚀 Launching [${keyNum}] ${fav.customTitle || fav.title || fav.id}...`, 'info');
+          window.open(url, '_blank');
+        }
+      }
+    }
+  });
+}
+
 // Render History Modal
 async function openHistoryModal() {
   try {
     const history = await fetch('/api/history').then(r => r.json());
     state.scanHistory = history || [];
 
-    // Check active scan
     if (state.isScanning) {
       elements.historyActiveScanCard.style.display = 'block';
       elements.historyActiveScanDetails.textContent = elements.scanMetaLabel.textContent || 'Scan in progress...';
@@ -429,7 +505,9 @@ function getFilteredAndSortedServices() {
 
   // 2. Tag Filter
   if (state.activeFilter !== 'all') {
-    if (state.activeFilter === 'web') {
+    if (state.activeFilter === 'favorites') {
+      list = list.filter(item => item.isFavorite);
+    } else if (state.activeFilter === 'web') {
       list = list.filter(item => item.isWeb || item.protocol === 'http' || item.protocol === 'https');
     } else if (state.activeFilter === 'ssl') {
       list = list.filter(item => item.protocol === 'https' || (item.tags && item.tags.includes('ssl')));
@@ -443,7 +521,9 @@ function getFilteredAndSortedServices() {
   }
 
   // 3. Sorting
-  if (state.sortBy === 'port') {
+  if (state.sortBy === 'favorites') {
+    list.sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
+  } else if (state.sortBy === 'port') {
     list.sort((a, b) => a.port - b.port);
   } else if (state.sortBy === 'ip') {
     list.sort((a, b) => (a.ip || '').localeCompare(b.ip || ''));
@@ -465,10 +545,10 @@ function getFilteredAndSortedServices() {
 function renderServices() {
   const filtered = getFilteredAndSortedServices();
 
-  // Update counts
   elements.totalCount.textContent = state.services.length;
   elements.webCount.textContent = state.services.filter(s => s.isWeb || s.protocol === 'http' || s.protocol === 'https').length;
   elements.sslCount.textContent = state.services.filter(s => s.protocol === 'https' || (s.tags && s.tags.includes('ssl'))).length;
+  elements.favoritesCount.textContent = state.services.filter(s => s.isFavorite).length;
 
   if (filtered.length === 0) {
     elements.servicesGrid.innerHTML = '';
@@ -479,7 +559,6 @@ function renderServices() {
   elements.emptyState.style.display = 'none';
   elements.servicesGrid.innerHTML = filtered.map(service => createServiceCardHtml(service)).join('');
 
-  // Attach card event listeners
   attachCardEvents();
 }
 
@@ -491,6 +570,7 @@ function createServiceCardHtml(service) {
   const protocol = (service.protocol || 'tcp').toUpperCase();
   const isHttps = service.protocol === 'https';
   const isHttp = service.protocol === 'http';
+  const isFav = !!service.isFavorite;
   
   // Thumbnail or Placeholder
   let thumbnailHtml = '';
@@ -555,6 +635,12 @@ function createServiceCardHtml(service) {
 
       <div class="card-footer">
         <div class="card-actions-left">
+          <button class="action-icon-btn favorite-btn ${isFav ? 'favorited' : ''}" data-id="${escapeHtml(service.id)}" title="${isFav ? 'Unpin from Favorites' : 'Pin to Quick-Launch Favorites'}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="${isFav ? '#f59e0b' : 'none'}" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+
           <button class="action-icon-btn edit-card-btn" data-id="${escapeHtml(service.id)}" title="Edit card details">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -595,6 +681,26 @@ function createServiceCardHtml(service) {
 
 // Attach Event Listeners to rendered cards
 function attachCardEvents() {
+  // Favorite toggle buttons
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      try {
+        const res = await fetch(`/api/services/${encodeURIComponent(id)}/favorite`, { method: 'POST' });
+        const updated = await res.json();
+        const idx = state.services.findIndex(s => s.id === id);
+        if (idx >= 0) {
+          state.services[idx] = updated;
+          renderServices();
+          renderFavoritesShelf();
+        }
+        showToast(updated.isFavorite ? `⭐ Pinned to Quick-Launch Favorites` : `Unpinned from Favorites`, 'success');
+      } catch {
+        showToast('Failed to update favorite', 'danger');
+      }
+    });
+  });
+
   // Edit card buttons
   document.querySelectorAll('.edit-card-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -616,6 +722,7 @@ function attachCardEvents() {
         if (idx >= 0) {
           state.services[idx] = updated;
           renderServices();
+          renderFavoritesShelf();
         }
         showToast(`Updated ${id}`, 'success');
       } catch (err) {
@@ -633,9 +740,10 @@ function attachCardEvents() {
           await fetch(`/api/services/${encodeURIComponent(id)}`, { method: 'DELETE' });
           state.services = state.services.filter(s => s.id !== id);
           renderServices();
+          renderFavoritesShelf();
           showToast(`Removed ${id}`, 'success');
         } catch (err) {
-          showToast(`Could not delete ${id}`, 'danger');
+          showToast('Could not delete service', 'danger');
         }
       }
     });
@@ -704,6 +812,80 @@ function initEventListeners() {
   elements.closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
   elements.closeHistoryModalBtn2.addEventListener('click', closeHistoryModal);
 
+  // Backup Export
+  elements.exportBackupBtn.addEventListener('click', () => {
+    showToast('Exporting dashboard configuration...', 'info');
+    window.location.href = '/api/backup/export';
+  });
+
+  // Backup Import Trigger
+  elements.importBackupBtn.addEventListener('click', () => {
+    elements.importFileInput.value = '';
+    elements.importFileInput.click();
+  });
+
+  elements.importFileInput.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const json = JSON.parse(evt.target.result);
+        const services = Array.isArray(json) ? json : (json.services || []);
+        if (!services || services.length === 0) {
+          showToast('Invalid backup file: no services found', 'danger');
+          return;
+        }
+
+        state.pendingImportData = { filename: file.name, services };
+        elements.importFileName.textContent = file.name;
+        elements.importFileMeta.textContent = `Found ${services.length} services in backup (Date: ${json.exportDate ? new Date(json.exportDate).toLocaleString() : 'N/A'}).`;
+        elements.importModal.style.display = 'flex';
+      } catch (err) {
+        showToast('Failed to parse backup JSON file', 'danger');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // Close Import Modal
+  const closeImportModal = () => {
+    elements.importModal.style.display = 'none';
+    state.pendingImportData = null;
+  };
+  elements.closeImportModalBtn.addEventListener('click', closeImportModal);
+  elements.cancelImportModalBtn.addEventListener('click', closeImportModal);
+
+  // Confirm Import Button
+  elements.confirmImportBtn.addEventListener('click', async () => {
+    if (!state.pendingImportData) return;
+    const mode = document.querySelector('input[name="importMode"]:checked')?.value || 'merge';
+
+    try {
+      const res = await fetch('/api/backup/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          services: state.pendingImportData.services,
+          mode
+        })
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        showToast(result.error || 'Import failed', 'danger');
+        return;
+      }
+
+      closeImportModal();
+      showToast(`Imported ${result.total || state.pendingImportData.services.length} services (${mode === 'merge' ? 'Merged' : 'Clean Restore'})`, 'success');
+      await loadServices();
+    } catch {
+      showToast('Error sending import request', 'danger');
+    }
+  });
+
   // Scan modal open / close
   const openModal = () => {
     elements.scanModal.style.display = 'flex';
@@ -731,6 +913,14 @@ function initEventListeners() {
       } else {
         elements.customPortsInputWrap.style.display = 'none';
       }
+    });
+  });
+
+  // Import mode selector toggle
+  document.querySelectorAll('input[name="importMode"]').forEach(radio => {
+    radio.addEventListener('change', e => {
+      document.querySelectorAll('.import-mode-options .radio-card').forEach(rc => rc.classList.remove('active'));
+      e.target.closest('.radio-card').classList.add('active');
     });
   });
 
@@ -794,6 +984,7 @@ function initEventListeners() {
         await fetch('/api/services', { method: 'DELETE' });
         state.services = [];
         renderServices();
+        renderFavoritesShelf();
         showToast('All services cleared', 'success');
       } catch (err) {
         showToast('Failed to clear services', 'danger');
@@ -825,6 +1016,7 @@ function initEventListeners() {
       if (idx >= 0) {
         state.services[idx] = updated;
         renderServices();
+        renderFavoritesShelf();
       }
 
       closeEditModal();
@@ -842,6 +1034,7 @@ function initEventListeners() {
         await fetch(`/api/services/${encodeURIComponent(id)}`, { method: 'DELETE' });
         state.services = state.services.filter(s => s.id !== id);
         renderServices();
+        renderFavoritesShelf();
         closeEditModal();
         showToast(`Deleted ${id}`, 'success');
       } catch (err) {
@@ -863,6 +1056,9 @@ function initEventListeners() {
     }
     if (e.target === elements.historyModal) {
       elements.historyModal.style.display = 'none';
+    }
+    if (e.target === elements.importModal) {
+      elements.importModal.style.display = 'none';
     }
   });
 }

@@ -109,6 +109,42 @@ async function runTests() {
   }
   console.log('   Static assets (HTML, CSS, JS) verified OK.');
 
+  // Test 8: Test Favorite status toggle
+  console.log('\n8. Testing POST /api/services/:id/favorite ...');
+  const favTarget = afterDelete.data[0];
+  const favRes = await request(`/api/services/${encodeURIComponent(favTarget.id)}/favorite`, {
+    method: 'POST'
+  });
+  console.log(`   Favorite status toggled for ${favTarget.id}: isFavorite=${favRes.data.isFavorite}`);
+  if (typeof favRes.data.isFavorite !== 'boolean') {
+    throw new Error('Favorite toggle response did not return boolean isFavorite!');
+  }
+
+  // Test 9: Test Backup Export & Import
+  console.log('\n9. Testing GET /api/backup/export & POST /api/backup/import ...');
+  const exportRes = await request('/api/backup/export');
+  if (!exportRes.data.services || !Array.isArray(exportRes.data.services)) {
+    throw new Error('Backup export did not return services array!');
+  }
+  console.log(`   Exported backup with ${exportRes.data.services.length} services (Version: ${exportRes.data.version})`);
+
+  const importRes = await request(
+    '/api/backup/import',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    },
+    {
+      services: exportRes.data.services,
+      mode: 'merge'
+    }
+  );
+  console.log(`   Import response:`, importRes.data);
+  if (!importRes.data.total) {
+    throw new Error('Import did not return total count!');
+  }
+  console.log('   Backup Export and Import verified successfully.');
+
   console.log('\n✅ ALL SCAN DASH TESTS PASSED SUCCESSFULLY!\n');
 }
 

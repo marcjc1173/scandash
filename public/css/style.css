@@ -421,10 +421,114 @@ body {
   border-radius: 8px;
 }
 
-.btn-lg {
-  padding: 12px 24px;
-  font-size: 1rem;
-  border-radius: 12px;
+.backup-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Quick-Launch Favorites Shelf */
+.favorites-shelf {
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(245, 158, 11, 0.08);
+  animation: slideDown 0.25s ease-out;
+}
+
+.favorites-shelf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.favorites-shelf-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.favorites-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.favorites-hint kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--primary);
+}
+
+.favorites-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.favorite-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.favorite-pill:hover {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  color: #fff;
+}
+
+.favorite-pill-num {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.favorite-pill-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.favorite-pill-port {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
 }
 
 /* Scan Progress Panel (Live HUD) */
@@ -838,6 +942,19 @@ body {
 .action-icon-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-main);
+}
+
+.action-icon-btn.favorite-btn:hover {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.action-icon-btn.favorite-btn.favorited {
+  color: #f59e0b;
+}
+
+.action-icon-btn.favorite-btn.favorited svg {
+  fill: #f59e0b;
 }
 
 .action-icon-btn.delete-btn:hover {
@@ -1270,6 +1387,34 @@ body {
   padding: 30px 10px;
   color: var(--text-dim);
   font-size: 0.88rem;
+}
+
+/* Import Modal Card */
+.import-summary-card {
+  background: rgba(0, 242, 254, 0.06);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.import-file-name {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.import-file-meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.import-mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* Responsive Breakpoints */

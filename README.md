@@ -26,13 +26,16 @@
 - 🎯 **Flexible Target Support**: Scan single IPs (`127.0.0.1`), hostnames, comma-separated lists, IP ranges (`192.168.1.1-50`), or CIDR subnets (`192.168.1.0/24`).
 - 📸 **Automated Webpage Thumbnails**: Automatically probes discovered ports for HTTP/HTTPS web apps and takes crisp screenshot previews using headless Chromium.
 - 🏷️ **Protocol & Banner Grabber**: Detects HTTP, HTTPS, SSH, FTP, MySQL, PostgreSQL, Redis, RTSP, and server headers.
+- ⭐ **Quick-Launch Favorites Bar & Number Shortcuts**: Pin your most-used services with one click; press numbers `1`–`9` on your keyboard to launch them instantly.
+- 💾 **JSON Backup & Restore (Export / Import)**: One-click export of your customized service cards and configuration, with seamless merge or clean-restore import.
 - 🎛️ **Customizable Dashboard Cards**:
   - **One-Click Launch**: Open discovered web apps in a new tab.
   - **Rename & Tag**: Customize titles, target URLs, tag chips, and notes.
   - **Re-Probe**: Refresh individual services and retake thumbnails on demand.
   - **Delete Cards**: Remove unwanted, decommissioned, or closed services.
 - 📡 **Real-Time Live HUD**: Server-Sent Events (SSE) stream live progress, speed meters (ports/sec), and newly discovered ports directly to your browser.
-- 🌌 **Modern Cyber-Glassmorphism UI**: Polished dark theme with glowing accents, smooth transitions, and responsive layout.
+- 🌓 **Light & Dark Theme Switcher**: Toggle effortlessly with smooth CSS color tokens.
+- 🌌 **Modern Cyber-Glassmorphism UI**: Polished interface with glowing accents, smooth transitions, and responsive layout.
 
 ---
 
@@ -121,9 +124,13 @@ systemctl --user restart scandash.service
 | `POST` | `/api/scan/stop` | Stop / cancel active scan |
 | `GET` | `/api/services` | List discovered and saved services (supports search/filter) |
 | `PUT` | `/api/services/:id` | Update custom service title, tags, custom URL, and notes |
+| `POST` | `/api/services/:id/favorite` | Toggle favorite / pinned status for quick launch |
 | `DELETE` | `/api/services/:id` | Delete a service card and thumbnail |
 | `DELETE` | `/api/services` | Clear all dashboard cards |
 | `POST` | `/api/services/:id/refresh` | Re-probe a specific port and refresh thumbnail |
+| `GET` | `/api/backup/export` | Export dashboard configuration & cards as JSON backup |
+| `POST` | `/api/backup/import` | Import JSON backup file (merge or clean-restore mode) |
+| `GET` | `/api/history` | Get recent scan history logs |
 | `GET` | `/api/network-info` | Get local host IP interfaces |
 | `GET` | `/api/config` | Get active server configuration |
 
