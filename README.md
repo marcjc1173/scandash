@@ -70,7 +70,7 @@ You have to manually look up IP addresses, find port numbers, write YAML or JSON
 
 ### 1. Clone & Install Dependencies
 ```bash
-git equitable clone <your-repo-url> scandash
+git clone https://github.com/marcjc1173/scandash.git
 cd scandash
 npm install
 ```
