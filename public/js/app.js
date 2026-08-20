@@ -100,7 +100,8 @@ const elements = {
   themeIconMoon: document.querySelector('.theme-icon-moon'),
   themeIconSun: document.querySelector('.theme-icon-sun'),
 
-  toastContainer: document.getElementById('toastContainer')
+  toastContainer: document.getElementById('toastContainer'),
+  scrollToTopBtn: document.getElementById('scrollToTopBtn')
 };
 
 // Initialize App
@@ -1061,6 +1062,24 @@ function initEventListeners() {
       elements.importModal.style.display = 'none';
     }
   });
+
+  // Scroll to Top Button
+  if (elements.scrollToTopBtn) {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        elements.scrollToTopBtn.classList.add('visible');
+      } else {
+        elements.scrollToTopBtn.classList.remove('visible');
+      }
+    });
+
+    elements.scrollToTopBtn.addEventListener('click', () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+  }
 }
 
 // Utility: HTML Escaper
