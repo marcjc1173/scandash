@@ -63,6 +63,14 @@ You have to manually look up IP addresses, find port numbers, write YAML or JSON
 - 📡 **Real-Time Live HUD**: Server-Sent Events (SSE) stream live progress, speed meters (ports/sec), and newly discovered ports directly to your browser.
 - 🌓 **Light & Dark Theme Switcher**: Toggle effortlessly with smooth CSS color tokens.
 - 🎨 **Theme & Background Customization**: Choose from stunning pre-generated developer presets (Aurora Glow, Cyberpunk Grid, Sunset Mesh, Minimalist Dark), upload a custom background, and adjust opacity and blur in real time.
+  
+  <p align="center">
+    <img src="./public/assets/backgrounds/aurora_glow.jpg" width="24%" alt="Aurora Glow" style="border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+    <img src="./public/assets/backgrounds/cyberpunk_grid.jpg" width="24%" alt="Cyberpunk Grid" style="border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+    <img src="./public/assets/backgrounds/sunset_mesh.jpg" width="24%" alt="Sunset Mesh" style="border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+    <img src="./public/assets/backgrounds/minimalist_dark.jpg" width="24%" alt="Minimalist Dark" style="border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+  </p>
+
 - 🌌 **Modern Cyber-Glassmorphism UI**: Polished interface with glowing accents, smooth transitions, and responsive layout.
 
 ---
