@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  <div class="dashboard-bg-overlay" id="dashboardBgOverlay"></div>
   <div class="app-container">
     <!-- Header -->
     <header class="app-header">
@@ -74,6 +75,14 @@
             <line x1="21" y1="12" x2="23" y2="12"/>
             <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
             <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+
+        <button class="btn btn-icon btn-ghost theme-toggle-btn" id="bgCustomizeBtn" title="Customize Background Image" aria-label="Customize background">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
           </svg>
         </button>
 
@@ -486,6 +495,101 @@
             </svg>
             <span>Confirm Import</span>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Background Settings Modal -->
+    <div class="modal-backdrop" id="backgroundModal" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Customize Dashboard Background</h3>
+              <p class="modal-subtitle">Select a preset background style, upload your own, and adjust parameters.</p>
+            </div>
+          </div>
+          <button class="modal-close-btn" id="closeBgModalBtn">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label style="font-weight: 600; display: block; margin-bottom: 10px;">Preset Backgrounds</label>
+            <div class="bg-presets-grid">
+              <div class="bg-preset-card active" data-preset="default">
+                <div class="bg-preset-preview default-preview"></div>
+                <div class="bg-preset-name">Default Gradient</div>
+              </div>
+              <div class="bg-preset-card" data-preset="aurora">
+                <div class="bg-preset-preview aurora-preview" style="background-image: url('/assets/backgrounds/aurora_glow.jpg');"></div>
+                <div class="bg-preset-name">Aurora Glow</div>
+              </div>
+              <div class="bg-preset-card" data-preset="cyberpunk">
+                <div class="bg-preset-preview cyberpunk-preview" style="background-image: url('/assets/backgrounds/cyberpunk_grid.jpg');"></div>
+                <div class="bg-preset-name">Cyberpunk Grid</div>
+              </div>
+              <div class="bg-preset-card" data-preset="sunset">
+                <div class="bg-preset-preview sunset-preview" style="background-image: url('/assets/backgrounds/sunset_mesh.jpg');"></div>
+                <div class="bg-preset-name">Sunset Mesh</div>
+              </div>
+              <div class="bg-preset-card" data-preset="minimalist">
+                <div class="bg-preset-preview minimalist-preview" style="background-image: url('/assets/backgrounds/minimalist_dark.jpg');"></div>
+                <div class="bg-preset-name">Minimalist Dark</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label style="font-weight: 600; display: block; margin-bottom: 10px;">Custom Image Upload</label>
+            <div class="bg-upload-dropzone" id="bgUploadDropzone">
+              <input type="file" id="bgFileInput" accept=".jpg,.jpeg,.png,.webp,.gif" style="display: none;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p class="dropzone-text">Drag & drop your background image here or <span class="dropzone-link">browse files</span></p>
+              <p class="dropzone-subtext">Supports PNG, JPG, WebP, GIF (Max 8MB)</p>
+            </div>
+            <div class="upload-progress-container" id="bgUploadProgress" style="display: none;">
+              <div class="upload-progress-bar">
+                <div class="upload-progress-fill" id="bgUploadProgressFill" style="width: 0%;"></div>
+              </div>
+              <span class="upload-progress-text" id="bgUploadProgressText">Uploading...</span>
+            </div>
+          </div>
+
+          <div class="form-group style-adjustment-group" style="border-top: 1px solid var(--border-subtle); padding-top: 15px; margin-top: 15px;">
+            <label style="font-weight: 600; display: block; margin-bottom: 15px;">Style Adjustments</label>
+            
+            <div class="slider-control">
+              <div class="slider-header" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text-muted);">
+                <span>Opacity</span>
+                <span id="bgOpacityValue">30%</span>
+              </div>
+              <input type="range" id="bgOpacitySlider" min="0" max="1" step="0.05" value="0.30" style="width: 100%;">
+            </div>
+
+            <div class="slider-control" style="margin-top: 15px;">
+              <div class="slider-header" style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text-muted);">
+                <span>Blur Intensity</span>
+                <span id="bgBlurValue">5px</span>
+              </div>
+              <input type="range" id="bgBlurSlider" min="0" max="20" step="1" value="5" style="width: 100%;">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="resetBgBtn">Reset to Default</button>
+          <button type="button" class="btn btn-primary" id="saveBgBtn">Apply & Close</button>
         </div>
       </div>
     </div>

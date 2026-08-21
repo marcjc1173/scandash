@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import {
   initStorage,
   getThumbnailsDir,
+  getBackgroundsDir,
   getServices,
   getServiceById,
   upsertService,
@@ -40,13 +41,16 @@ const DEFAULT_HTTP_TIMEOUT = parseInt(process.env.HTTP_TIMEOUT || '4000', 10);
 initStorage();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Serve thumbnails
 app.use('/api/thumbnails', express.static(getThumbnailsDir()));
+
+// Serve custom backgrounds
+app.use('/api/backgrounds', express.static(getBackgroundsDir()));
 
 // Active SSE Connections
 let sseClients = [];
@@ -403,6 +407,56 @@ app.get('/api/config', (req, res) => {
     socketTimeout: DEFAULT_SOCKET_TIMEOUT,
     httpTimeout: DEFAULT_HTTP_TIMEOUT
   });
+});
+
+// API: Upload custom background image (base64)
+app.post('/api/background/upload', (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'No image data provided.' });
+    }
+
+    // Verify format matches base64 data URL
+    const match = image.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
+    if (!match) {
+      return res.status(400).json({ error: 'Invalid image format. Expected a base64 Data URL.' });
+    }
+
+    const imgType = match[1];
+    const base64Data = match[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Limit to 8MB
+    if (buffer.length > 8 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image size exceeds maximum limit of 8MB.' });
+    }
+
+    const bgDir = getBackgroundsDir();
+    
+    // Clean up any existing custom uploaded backgrounds first to conserve space
+    const files = fs.readdirSync(bgDir);
+    for (const file of files) {
+      if (file.startsWith('custom_bg_')) {
+        try {
+          fs.unlinkSync(path.join(bgDir, file));
+        } catch (_) {}
+      }
+    }
+
+    // Save the new background image
+    const filename = `custom_bg_${Date.now()}.${imgType}`;
+    const filePath = path.join(bgDir, filename);
+    fs.writeFileSync(filePath, buffer);
+
+    res.json({
+      success: true,
+      url: `/api/backgrounds/${filename}`
+    });
+  } catch (err) {
+    console.error('Failed to upload background:', err);
+    res.status(500).json({ error: 'Internal server error during upload.' });
+  }
 });
 
 // Graceful cleanup on shutdown

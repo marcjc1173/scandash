@@ -101,12 +101,30 @@ const elements = {
   themeIconSun: document.querySelector('.theme-icon-sun'),
 
   toastContainer: document.getElementById('toastContainer'),
-  scrollToTopBtn: document.getElementById('scrollToTopBtn')
+  scrollToTopBtn: document.getElementById('scrollToTopBtn'),
+
+  // Background Customization
+  dashboardBgOverlay: document.getElementById('dashboardBgOverlay'),
+  bgCustomizeBtn: document.getElementById('bgCustomizeBtn'),
+  backgroundModal: document.getElementById('backgroundModal'),
+  closeBgModalBtn: document.getElementById('closeBgModalBtn'),
+  bgUploadDropzone: document.getElementById('bgUploadDropzone'),
+  bgFileInput: document.getElementById('bgFileInput'),
+  bgUploadProgress: document.getElementById('bgUploadProgress'),
+  bgUploadProgressFill: document.getElementById('bgUploadProgressFill'),
+  bgUploadProgressText: document.getElementById('bgUploadProgressText'),
+  bgOpacitySlider: document.getElementById('bgOpacitySlider'),
+  bgOpacityValue: document.getElementById('bgOpacityValue'),
+  bgBlurSlider: document.getElementById('bgBlurSlider'),
+  bgBlurValue: document.getElementById('bgBlurValue'),
+  resetBgBtn: document.getElementById('resetBgBtn'),
+  saveBgBtn: document.getElementById('saveBgBtn')
 };
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  initBackground();
   initEventListeners();
   initKeyboardShortcuts();
   loadConfigAndNetwork();
@@ -138,6 +156,144 @@ function toggleTheme() {
   const newTheme = currentTheme === 'light' ? 'dark' : 'light';
   applyTheme(newTheme);
   showToast(`Switched to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} Mode`, 'info');
+}
+
+// Background Management
+function initBackground() {
+  const type = localStorage.getItem('scandash_background_type') || 'default';
+  const value = localStorage.getItem('scandash_background_value') || '';
+  const opacity = localStorage.getItem('scandash_background_opacity') || '0.30';
+  const blur = localStorage.getItem('scandash_background_blur') || '5';
+
+  // Apply to UI state inputs
+  if (elements.bgOpacitySlider) {
+    elements.bgOpacitySlider.value = opacity;
+    if (elements.bgOpacityValue) elements.bgOpacityValue.textContent = `${Math.round(opacity * 100)}%`;
+  }
+  if (elements.bgBlurSlider) {
+    elements.bgBlurSlider.value = blur;
+    if (elements.bgBlurValue) elements.bgBlurValue.textContent = `${blur}px`;
+  }
+
+  // Update active card indicator
+  updatePresetActiveCard(type, value);
+
+  // Apply visual background styles
+  applyBackground(type, value, opacity, blur);
+}
+
+function applyBackground(type, value, opacity, blur) {
+  if (!elements.dashboardBgOverlay) return;
+
+  if (type === 'default') {
+    elements.dashboardBgOverlay.style.backgroundImage = 'none';
+    elements.dashboardBgOverlay.style.opacity = '0';
+    elements.dashboardBgOverlay.style.display = 'none';
+  } else {
+    elements.dashboardBgOverlay.style.display = 'block';
+    elements.dashboardBgOverlay.style.backgroundImage = `url("${value}")`;
+    elements.dashboardBgOverlay.style.opacity = opacity;
+    elements.dashboardBgOverlay.style.filter = `blur(${blur}px)`;
+  }
+}
+
+function updatePresetActiveCard(type, value) {
+  const cards = document.querySelectorAll('.bg-preset-card');
+  cards.forEach(card => {
+    card.classList.remove('active');
+    const cardPreset = card.getAttribute('data-preset');
+    if (type === 'default' && cardPreset === 'default') {
+      card.classList.add('active');
+    } else if (type === 'preset' && cardPreset !== 'default') {
+      const previewEl = card.querySelector('.bg-preset-preview');
+      if (previewEl) {
+        const bgImg = previewEl.style.backgroundImage;
+        if (bgImg && bgImg.includes(value)) {
+          card.classList.add('active');
+        }
+      }
+    } else if (type === 'custom' && cardPreset === 'default') {
+      // Custom background upload has no preset card matching it, but we can clear active on presets.
+    }
+  });
+}
+
+// Upload Custom Background Image
+async function handleCustomBgUpload(file) {
+  // Validate file
+  if (!file.type.startsWith('image/')) {
+    showToast('Invalid file type. Please upload an image file.', 'danger');
+    return;
+  }
+
+  if (file.size > 8 * 1024 * 1024) {
+    showToast('File size is too large. Max limit is 8MB.', 'danger');
+    return;
+  }
+
+  elements.bgUploadProgress.style.display = 'block';
+  elements.bgUploadProgressFill.style.width = '0%';
+  elements.bgUploadProgressText.textContent = 'Preparing upload...';
+
+  const reader = new FileReader();
+  reader.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 50); // Read is first 50%
+      elements.bgUploadProgressFill.style.width = `${pct}%`;
+      elements.bgUploadProgressText.textContent = `Reading image... ${pct}%`;
+    }
+  };
+
+  reader.onload = async e => {
+    try {
+      const dataUrl = e.target.result;
+      elements.bgUploadProgressText.textContent = 'Uploading to server...';
+
+      // Send upload fetch request
+      const res = await fetch('/api/background/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl })
+      });
+
+      elements.bgUploadProgressFill.style.width = '90%';
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || 'Server rejected background upload.');
+      }
+
+      elements.bgUploadProgressFill.style.width = '100%';
+      elements.bgUploadProgressText.textContent = 'Upload complete!';
+      
+      const opacity = elements.bgOpacitySlider.value;
+      const blur = elements.bgBlurSlider.value;
+
+      localStorage.setItem('scandash_background_type', 'custom');
+      localStorage.setItem('scandash_background_value', result.url);
+
+      updatePresetActiveCard('custom', result.url);
+      applyBackground('custom', result.url, opacity, blur);
+      showToast('Custom background uploaded successfully!', 'success');
+
+      // Hide progress indicator after short delay
+      setTimeout(() => {
+        elements.bgUploadProgress.style.display = 'none';
+      }, 1500);
+
+    } catch (err) {
+      console.error(err);
+      elements.bgUploadProgress.style.display = 'none';
+      showToast(err.message || 'Upload failed. Please try again.', 'danger');
+    }
+  };
+
+  reader.onerror = () => {
+    elements.bgUploadProgress.style.display = 'none';
+    showToast('Failed to read image file.', 'danger');
+  };
+
+  reader.readAsDataURL(file);
 }
 
 // Toast notification helper
@@ -1080,6 +1236,149 @@ function initEventListeners() {
       });
     });
   }
+
+  // Background Customizer Modals Open/Close
+  if (elements.bgCustomizeBtn) {
+    elements.bgCustomizeBtn.addEventListener('click', () => {
+      // Set current states from localStorage or defaults
+      const type = localStorage.getItem('scandash_background_type') || 'default';
+      const value = localStorage.getItem('scandash_background_value') || '';
+      const opacity = localStorage.getItem('scandash_background_opacity') || '0.30';
+      const blur = localStorage.getItem('scandash_background_blur') || '5';
+
+      elements.bgOpacitySlider.value = opacity;
+      elements.bgOpacityValue.textContent = `${Math.round(opacity * 100)}%`;
+      elements.bgBlurSlider.value = blur;
+      elements.bgBlurValue.textContent = `${blur}px`;
+
+      updatePresetActiveCard(type, value);
+      elements.backgroundModal.style.display = 'flex';
+    });
+  }
+
+  if (elements.closeBgModalBtn) {
+    elements.closeBgModalBtn.addEventListener('click', () => {
+      elements.backgroundModal.style.display = 'none';
+    });
+  }
+
+  if (elements.saveBgBtn) {
+    elements.saveBgBtn.addEventListener('click', () => {
+      elements.backgroundModal.style.display = 'none';
+      showToast('Background settings applied', 'success');
+    });
+  }
+
+  // Presets selection
+  document.querySelectorAll('.bg-preset-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const preset = card.getAttribute('data-preset');
+      const opacity = elements.bgOpacitySlider.value;
+      const blur = elements.bgBlurSlider.value;
+
+      let type = 'preset';
+      let value = '';
+
+      if (preset === 'default') {
+        type = 'default';
+      } else {
+        const previewEl = card.querySelector('.bg-preset-preview');
+        const bgStyle = previewEl.style.backgroundImage;
+        // extract url from: url("/assets/backgrounds/...")
+        const bgUrl = bgStyle.slice(4, -1).replace(/"/g, "");
+        value = bgUrl;
+      }
+
+      localStorage.setItem('scandash_background_type', type);
+      localStorage.setItem('scandash_background_value', value);
+      
+      updatePresetActiveCard(type, value);
+      applyBackground(type, value, opacity, blur);
+    });
+  });
+
+  // Slider adjustments in real-time
+  if (elements.bgOpacitySlider) {
+    elements.bgOpacitySlider.addEventListener('input', e => {
+      const val = e.target.value;
+      elements.bgOpacityValue.textContent = `${Math.round(val * 100)}%`;
+      localStorage.setItem('scandash_background_opacity', val);
+
+      const type = localStorage.getItem('scandash_background_type') || 'default';
+      const value = localStorage.getItem('scandash_background_value') || '';
+      const blur = localStorage.getItem('scandash_background_blur') || '5';
+      applyBackground(type, value, val, blur);
+    });
+  }
+
+  if (elements.bgBlurSlider) {
+    elements.bgBlurSlider.addEventListener('input', e => {
+      const val = e.target.value;
+      elements.bgBlurValue.textContent = `${val}px`;
+      localStorage.setItem('scandash_background_blur', val);
+
+      const type = localStorage.getItem('scandash_background_type') || 'default';
+      const value = localStorage.getItem('scandash_background_value') || '';
+      const opacity = localStorage.getItem('scandash_background_opacity') || '0.30';
+      applyBackground(type, value, opacity, val);
+    });
+  }
+
+  // Reset background settings
+  if (elements.resetBgBtn) {
+    elements.resetBgBtn.addEventListener('click', () => {
+      localStorage.removeItem('scandash_background_type');
+      localStorage.removeItem('scandash_background_value');
+      localStorage.removeItem('scandash_background_opacity');
+      localStorage.removeItem('scandash_background_blur');
+
+      elements.bgOpacitySlider.value = '0.30';
+      elements.bgOpacityValue.textContent = '30%';
+      elements.bgBlurSlider.value = '5';
+      elements.bgBlurValue.textContent = '5px';
+
+      updatePresetActiveCard('default', '');
+      applyBackground('default', '', '0.30', '5');
+      showToast('Reset to default dashboard theme', 'info');
+    });
+  }
+
+  // File Upload Drag & Drop & Browse
+  if (elements.bgUploadDropzone) {
+    elements.bgUploadDropzone.addEventListener('click', () => {
+      elements.bgFileInput.click();
+    });
+
+    elements.bgUploadDropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      elements.bgUploadDropzone.classList.add('dragover');
+    });
+
+    elements.bgUploadDropzone.addEventListener('dragleave', () => {
+      elements.bgUploadDropzone.classList.remove('dragover');
+    });
+
+    elements.bgUploadDropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      elements.bgUploadDropzone.classList.remove('dragover');
+      const file = e.dataTransfer.files?.[0];
+      if (file) handleCustomBgUpload(file);
+    });
+  }
+
+  if (elements.bgFileInput) {
+    elements.bgFileInput.addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (file) handleCustomBgUpload(file);
+    });
+  }
+
+  // Close bgModal on backdrop click
+  window.addEventListener('click', e => {
+    if (e.target === elements.backgroundModal) {
+      elements.backgroundModal.style.display = 'none';
+    }
+  });
 }
 
 // Utility: HTML Escaper

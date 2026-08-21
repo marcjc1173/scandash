@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 
 const dataDir = process.env.DATA_DIR ? path.resolve(process.cwd(), process.env.DATA_DIR) : path.resolve(__dirname, '../data');
 const thumbnailsDir = path.join(dataDir, 'thumbnails');
+const backgroundsDir = path.join(dataDir, 'backgrounds');
 const servicesFilePath = path.join(dataDir, 'services.json');
 const historyFilePath = path.join(dataDir, 'scan_history.json');
 
@@ -18,6 +19,9 @@ export function initStorage() {
   if (!fs.existsSync(thumbnailsDir)) {
     fs.mkdirSync(thumbnailsDir, { recursive: true });
   }
+  if (!fs.existsSync(backgroundsDir)) {
+    fs.mkdirSync(backgroundsDir, { recursive: true });
+  }
   if (!fs.existsSync(servicesFilePath)) {
     fs.writeFileSync(servicesFilePath, JSON.stringify([], null, 2), 'utf-8');
   }
@@ -28,6 +32,10 @@ export function initStorage() {
 
 export function getThumbnailsDir() {
   return thumbnailsDir;
+}
+
+export function getBackgroundsDir() {
+  return backgroundsDir;
 }
 
 export function getServices() {

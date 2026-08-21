@@ -39,7 +39,7 @@ You have to manually look up IP addresses, find port numbers, write YAML or JSON
 | **Visuals** | 🎨 Static icons or manual logo hunting | 📸 **Automated Real Live Screenshots** via headless Chromium |
 | **SPAs & Media** | ❌ Static placeholder links | 🎬 Auto-resolves SPAs, Plex Web (`/web`), and rendered interfaces |
 | **Quick Access** | 📌 Standard bookmark links | ⭐ **Quick-Launch Shelf** with instant keyboard shortcuts (`1`–`9`) |
-| **Customization** | 📝 Edit YAML & restart container | 🎛️ **Direct in-browser card editing**, re-probing & custom tags |
+| **Customization** | 📝 Edit YAML & restart container | 🎛️ **Direct card editing, tags, and background customizer (presets & user uploads)** |
 | **Backup** | 📁 Manually copy mounted config folders | 💾 **One-Click JSON Export / Import** (Merge or Clean Restore) |
 
 > **Bottom line**: Instead of spending hours writing configuration files, **ScanDash scans your network, captures live preview thumbnails of your web apps, and builds a fully interactive dashboard in seconds.**
@@ -62,6 +62,7 @@ You have to manually look up IP addresses, find port numbers, write YAML or JSON
   - **Delete Cards**: Remove unwanted, decommissioned, or closed services.
 - 📡 **Real-Time Live HUD**: Server-Sent Events (SSE) stream live progress, speed meters (ports/sec), and newly discovered ports directly to your browser.
 - 🌓 **Light & Dark Theme Switcher**: Toggle effortlessly with smooth CSS color tokens.
+- 🎨 **Theme & Background Customization**: Choose from stunning pre-generated developer presets (Aurora Glow, Cyberpunk Grid, Sunset Mesh, Minimalist Dark), upload a custom background, and adjust opacity and blur in real time.
 - 🌌 **Modern Cyber-Glassmorphism UI**: Polished interface with glowing accents, smooth transitions, and responsive layout.
 
 ---
@@ -160,6 +161,8 @@ systemctl --user restart scandash.service
 | `GET` | `/api/history` | Get recent scan history logs |
 | `GET` | `/api/network-info` | Get local host IP interfaces |
 | `GET` | `/api/config` | Get active server configuration |
+| `POST` | `/api/background/upload` | Upload a custom background image (base64 format) |
+| `GET` | `/api/backgrounds/:filename` | Serve user-uploaded custom background images statically |
 
 ---
 
